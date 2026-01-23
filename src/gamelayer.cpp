@@ -5,29 +5,49 @@
 
 GameLayer::GameLayer()
 {
-	Texture2D paddleTexture;
-	paddleTexture = LoadTexture("../assets/image/paddle.png");
+	Texture2D paddleTexture = LoadTexture("../assets/image/paddle.png");
 	m_Textures.push_back(paddleTexture);
 
 	Entity paddle;
-	paddle.type = EntityType::Paddle;
-	paddle.textureID = paddleTexture.id;
-	paddle.width = paddleTexture.width;
-	paddle.height = paddleTexture.height;
+	paddle.type =		EntityType::Paddle;
+	paddle.textureID =	paddleTexture.id;
+	paddle.width =		paddleTexture.width;
+	paddle.height =		paddleTexture.height;
 	paddle.position.x = (GameResolution::f_Width / 2.0f) - (paddle.width / 2);
-	paddle.position.y = GameResolution::f_Height - paddle.height - 15;
-	paddle.moveSpeed = 600.0f;
-	//paddle.targetPosition = paddle.position;
-
+	paddle.position.y =	GameResolution::f_Height - paddle.height - 15;
+	paddle.moveSpeed =	600.0f;
 	m_Entities.push_back(paddle);
+
+	Texture2D ballTexture = LoadTexture("../assets/image/ball_default.png");
+	m_Textures.push_back(ballTexture);
+
+	Entity ball;
+	ball.type = EntityType::Ball;
+	ball.textureID = ballTexture.id;
+	ball.width = ballTexture.width;
+	ball.height = ballTexture.height;
+	ball.position.x = (GameResolution::f_Width / 2.0f) - (ball.width / 2);
+	ball.position.y = paddle.position.y - ball.height - 2;
+	ball.moveSpeed = 100.0f;
+	m_Entities.push_back(ball);
+
+	Texture2D blockBlueTexture = LoadTexture("../assets/image/block_blue.png");
+	m_Textures.push_back(blockBlueTexture);
+	Texture2D blockBrownTexture = LoadTexture("../assets/image/block_brown.png");
+	m_Textures.push_back(blockBrownTexture);
+	Texture2D blockGreenTexture = LoadTexture("../assets/image/block_green.png");
+	m_Textures.push_back(blockGreenTexture);
+	Texture2D blockPinkTexture = LoadTexture("../assets/image/block_pink.png");
+	m_Textures.push_back(blockPinkTexture);
 }
 
 GameLayer::~GameLayer()
 {
-	for (const auto& texture : m_Textures)
+	for (auto& texture : m_Textures)
 	{
 		UnloadTexture(texture);
 	}
+	m_Textures.clear();
 }
 
 bool GameLayer::ProcessInput()

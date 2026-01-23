@@ -1,5 +1,6 @@
 #pragma once
 #include "layer.h"
+#include "raylib.h"
 #include <vector>
 
 enum class EntityType {
