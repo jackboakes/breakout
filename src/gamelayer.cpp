@@ -33,24 +33,39 @@ GameLayer::GameLayer()
 	ball.direction =		{ -1.0f, -1.0f };
 	m_Entities.push_back(ball);
 
-	//constexpr int maxBlockPerRow { 7 };
+	
 
-	Entity block;
 	unsigned int blockBlueID { AddTexture("../assets/image/block_blue.png") };
-	block.AddFlag(EntityFlags::BLOCK | EntityFlags::VISIBLE | EntityFlags::COLLIDABLE);
-	block.textureID = blockBlueID;
-	block.width = m_Textures[blockBlueID].width;
-	block.height = m_Textures[blockBlueID].height;
-	block.position.x = (GameResolution::f_Width / 2.0f) - (ball.width / 2);
-	block.position.y = block.height + 20;
-	m_Entities.push_back(block);
+	
+	
+
 
 
 	unsigned int blockBrownID { AddTexture("../assets/image/block_brown.png") };
 	unsigned int blockGreenID { AddTexture("../assets/image/block_green.png") };
 	unsigned int blockPinkID { AddTexture("../assets/image/block_pink.png") };
 
+	constexpr int maxBlockPerRow { 7 };
+	constexpr int paddingBetweenBlock { 2 };
+	
+	const int blockWidth { m_Textures[blockBlueID].width };
+	const int blockHeight { m_Textures[blockBlueID].height };
 
+	const int totalBlockWidth { (maxBlockPerRow * blockWidth) + ((maxBlockPerRow - 1) * paddingBetweenBlock) };
+
+	const float startX { (GameResolution::f_Width * 0.5f) - (static_cast<float>(totalBlockWidth) * 0.5f) };
+
+	for (int i { 0 }; i < maxBlockPerRow; i++)
+	{
+		Entity block;
+		block.AddFlag(EntityFlags::BLOCK | EntityFlags::VISIBLE | EntityFlags::COLLIDABLE);
+		block.textureID = blockBlueID;
+		block.width = m_Textures[blockBlueID].width;
+		block.height = m_Textures[blockBlueID].height;
+		block.position.x = startX + static_cast<float>(i * (blockWidth + paddingBetweenBlock));
+		block.position.y = block.height + 20;
+		m_Entities.push_back(block);
+	}
 }
 
 GameLayer::~GameLayer()
