@@ -1,49 +1,47 @@
 #include "gamelayer.h"
 #include "globals.h"
 #include <algorithm>
-#include <string>
 
 GameLayer::GameLayer()
 {
-	Texture2D paddleTexture = LoadTexture("../assets/image/paddle.png");
-	m_Textures.push_back(paddleTexture);
+	auto AddTexture = [&](const char* path) {
+		Texture2D texture = LoadTexture(path);
+		m_Textures[texture.id] = texture;
+		return texture.id;
+		};
+
+	unsigned int paddleID = AddTexture("../assets/image/paddle.png");
+	unsigned int ballID = AddTexture("../assets/image/ball_default.png");
+	AddTexture("../assets/image/block_blue.png");
+	AddTexture("../assets/image/block_brown.png");
+	AddTexture("../assets/image/block_green.png");
+	AddTexture("../assets/image/block_pink.png");
 
 	Entity paddle;
-	paddle.type =		EntityType::Paddle;
-	paddle.textureID =	paddleTexture.id;
-	paddle.width =		paddleTexture.width;
-	paddle.height =		paddleTexture.height;
-	paddle.position.x = (GameResolution::f_Width / 2.0f) - (paddle.width / 2);
-	paddle.position.y =	GameResolution::f_Height - paddle.height - 15;
-	paddle.moveSpeed =	600.0f;
+	paddle.AddFlag(EntityFlags::PLAYER | EntityFlags::MOVABLE | EntityFlags::VISIBLE | EntityFlags::COLLIDABLE);
+	paddle.textureID =		paddleID;
+	paddle.width =			m_Textures[paddleID].width;
+	paddle.height =			m_Textures[paddleID].height;
+	paddle.position.x =		(GameResolution::f_Width / 2.0f) - (paddle.width / 2);
+	paddle.position.y =		GameResolution::f_Height - paddle.height - 15;
+	paddle.moveSpeed =		600.0f;
 	m_Entities.push_back(paddle);
 
-	Texture2D ballTexture = LoadTexture("../assets/image/ball_default.png");
-	m_Textures.push_back(ballTexture);
-
 	Entity ball;
-	ball.type = EntityType::Ball;
-	ball.textureID = ballTexture.id;
-	ball.width = ballTexture.width;
-	ball.height = ballTexture.height;
-	ball.position.x = (GameResolution::f_Width / 2.0f) - (ball.width / 2);
-	ball.position.y = paddle.position.y - ball.height - 2;
-	ball.moveSpeed = 100.0f;
+	ball.AddFlag(EntityFlags::BALL | EntityFlags::MOVABLE | EntityFlags::VISIBLE | EntityFlags::COLLIDABLE);
+	ball.textureID =		ballID;
+	ball.width =			m_Textures[ballID].width;
+	ball.height =			m_Textures[ballID].height;
+	ball.position.x =		(GameResolution::f_Width / 2.0f) - (ball.width / 2);
+	ball.position.y =		paddle.position.y - ball.height - 2;
+	ball.moveSpeed =		100.0f;
+	ball.direction =		{ -1.0f, -1.0f };
 	m_Entities.push_back(ball);
-
-	Texture2D blockBlueTexture = LoadTexture("../assets/image/block_blue.png");
-	m_Textures.push_back(blockBlueTexture);
-	Texture2D blockBrownTexture = LoadTexture("../assets/image/block_brown.png");
-	m_Textures.push_back(blockBrownTexture);
-	Texture2D blockGreenTexture = LoadTexture("../assets/image/block_green.png");
-	m_Textures.push_back(blockGreenTexture);
-	Texture2D blockPinkTexture = LoadTexture("../assets/image/block_pink.png");
-	m_Textures.push_back(blockPinkTexture);
 }
 
 GameLayer::~GameLayer()
 {
-	for (auto& texture : m_Textures)
+	for (auto& [id, texture] : m_Textures)
 	{
 		UnloadTexture(texture);
 	}
@@ -54,32 +52,33 @@ bool GameLayer::ProcessInput()
 {
 	bool inputProcessed { false };
 
-	float deltaTime { GetFrameTime() };
+	if (IsKeyPressed(KEY_A) || IsKeyPressed(KEY_D) || IsKeyPressed(KEY_SPACE))
+	{
+		m_Pause = true;
+	}
+
+	if (m_Pause == false)
+	{
+		return false;
+	}
 
 	for (auto& entity : m_Entities)
 	{
-		switch (entity.type)
+		if (entity.HasFlag(EntityFlags::PLAYER))
 		{
-		case EntityType::Paddle:
-		{
-			Vector2 targetPaddlePosition = entity.position;
+			entity.direction.x = 0.0f;
 
-			if (IsKeyDown(KEY_A) || IsKeyPressed(KEY_LEFT))
+			if (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT))
 			{
-				targetPaddlePosition.x -= entity.moveSpeed * deltaTime;
+				entity.direction.x -= 1.0f;
 				inputProcessed = true;
 			}
 
-			if (IsKeyDown(KEY_D) || IsKeyPressed(KEY_RIGHT))
+			if (IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT))
 			{
-				targetPaddlePosition.x += entity.moveSpeed * deltaTime;
+				entity.direction.x += 1.0f;
 				inputProcessed = true;
 			}
-
-			targetPaddlePosition.x = std::clamp(targetPaddlePosition.x, 0.0f, GameResolution::f_Width - static_cast<float>(entity.width));
-			entity.position.x = targetPaddlePosition.x;
-		}
-		break;
 		}
 	}
 
@@ -91,6 +90,75 @@ void GameLayer::Update(float deltaTime)
 	CanvasTransform canvasTransform { CalculateCanvasTransform() };
 	m_Camera2D.zoom = canvasTransform.scale;
 	m_Camera2D.offset = canvasTransform.offset;
+
+	if (m_Pause == false)
+	{
+		return;
+	}
+
+	// Update movement
+	for (auto& entity : m_Entities)
+	{
+		if (entity.HasFlag(EntityFlags::MOVABLE))
+		{
+			entity.position.x += entity.direction.x * entity.moveSpeed * deltaTime;
+			entity.position.y += entity.direction.y * entity.moveSpeed * deltaTime;
+		}
+
+		if (entity.HasFlag(EntityFlags::PLAYER))
+		{
+			entity.position.x = std::clamp(entity.position.x, 0.0f, GameResolution::f_Width - static_cast<float>(entity.width));
+		}
+	}
+
+	// Check Collisions with wall
+	for (auto& ball : m_Entities)
+	{
+		if (!ball.HasFlag(EntityFlags::BALL)) continue;
+	
+			// Screen Bouncing
+			if (ball.position.x <= 0 || ball.position.x + ball.width >= GameResolution::width)
+			{
+				ball.direction.x *= -1;
+			}
+
+			if (ball.position.y <= 0)
+			{
+				ball.direction.y *= -1;
+			}
+
+			// Reset when off screen
+			if (ball.position.y > GameResolution::height)
+			{
+				ball.position.x = (GameResolution::f_Width / 2.0f) - (ball.width / 2);
+				ball.position.y = (GameResolution::f_Height * 0.5f);
+			}
+		
+	}
+
+	// Check for collision with paddle or brick
+	for (auto& ball : m_Entities)
+	{
+		if (!ball.HasFlag(EntityFlags::BALL)) continue;
+
+		Rectangle ballBounds = ball.GetCollider();
+
+		for (auto& other : m_Entities)
+		{
+			if (&ball == &other) continue;
+			if (!other.HasFlag(EntityFlags::COLLIDABLE)) continue;
+
+			Rectangle otherBounds = other.GetCollider();
+
+			if (CheckCollisionRecs(ballBounds, otherBounds))
+			{
+				if (other.HasFlag(EntityFlags::PLAYER))
+				{
+					ball.direction.y *= -1.0f;
+				}
+			}
+		}
+	}
 }
 
 void GameLayer::Draw()
@@ -99,19 +167,17 @@ void GameLayer::Draw()
 	ClearBackground(m_BackgroundColour);
 	BeginMode2D(m_Camera2D);
 
-		for (const auto& entity : m_Entities)
+	for (const auto& entity : m_Entities)
+	{
+		if (entity.HasFlag(EntityFlags::VISIBLE))
 		{
-			if (entity.isVisible)
+			auto search = m_Textures.find(entity.textureID);
+			if (search != m_Textures.end())
 			{
-				for (const auto& texture : m_Textures)
-				{
-					if (entity.textureID == texture.id)
-					{
-						DrawTexture(texture, entity.position.x, entity.position.y, WHITE);
-					}
-				}
+				DrawTexture(search->second, entity.position.x, entity.position.y, WHITE);
 			}
 		}
+	}
 
 	EndMode2D();
 
