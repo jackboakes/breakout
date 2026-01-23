@@ -25,9 +25,15 @@ if (NOT raylib_FOUND)
 endif()
 
 set(HEADERS
+    include/application.h
+    include/gamelayer.h
+    include/globals.h
+    include/layer.h
 )
 
 set(SOURCES
+    src/application.cpp
+    src/gamelayer.cpp
     src/main.cpp
 )
 
