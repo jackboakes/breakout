@@ -35,36 +35,35 @@ GameLayer::GameLayer()
 
 	
 
-	unsigned int blockBlueID { AddTexture("../assets/image/block_blue.png") };
-	
-	
-
-
-
-	unsigned int blockBrownID { AddTexture("../assets/image/block_brown.png") };
-	unsigned int blockGreenID { AddTexture("../assets/image/block_green.png") };
-	unsigned int blockPinkID { AddTexture("../assets/image/block_pink.png") };
-
+	unsigned int blockTextureIds[4];
+	blockTextureIds[0] = AddTexture("../assets/image/block_blue.png");
+	blockTextureIds[1] = AddTexture("../assets/image/block_brown.png");
+	blockTextureIds[2] = AddTexture("../assets/image/block_green.png");
+	blockTextureIds[3] = AddTexture("../assets/image/block_pink.png");
 	constexpr int maxBlockPerRow { 7 };
 	constexpr int paddingBetweenBlock { 2 };
 	
-	const int blockWidth { m_Textures[blockBlueID].width };
-	const int blockHeight { m_Textures[blockBlueID].height };
+	const int blockWidth { m_Textures[blockTextureIds[0]].width };
+	const int blockHeight { m_Textures[blockTextureIds[0]].height };
 
 	const int totalBlockWidth { (maxBlockPerRow * blockWidth) + ((maxBlockPerRow - 1) * paddingBetweenBlock) };
 
 	const float startX { (GameResolution::f_Width * 0.5f) - (static_cast<float>(totalBlockWidth) * 0.5f) };
 
-	for (int i { 0 }; i < maxBlockPerRow; i++)
+
+	for (int i { 0 }; i < 4; i++)
 	{
-		Entity block;
-		block.AddFlag(EntityFlags::BLOCK | EntityFlags::VISIBLE | EntityFlags::COLLIDABLE);
-		block.textureID = blockBlueID;
-		block.width = m_Textures[blockBlueID].width;
-		block.height = m_Textures[blockBlueID].height;
-		block.position.x = startX + static_cast<float>(i * (blockWidth + paddingBetweenBlock));
-		block.position.y = block.height + 20;
-		m_Entities.push_back(block);
+		for (int j { 0 }; j < maxBlockPerRow; j++)
+		{
+			Entity block;
+			block.AddFlag(EntityFlags::BLOCK | EntityFlags::VISIBLE | EntityFlags::COLLIDABLE);
+			block.textureID = blockTextureIds[i];
+			block.width = m_Textures[blockTextureIds[i]].width;
+			block.height = m_Textures[blockTextureIds[i]].height;
+			block.position.x = startX + static_cast<float>(j * (blockWidth + paddingBetweenBlock));
+			block.position.y = 20 + i * (block.height + paddingBetweenBlock);
+			m_Entities.push_back(block);
+		}
 	}
 }
 

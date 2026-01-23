@@ -6,7 +6,7 @@ Application::Application()
 	// Window
 	SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_MSAA_4X_HINT);
 
-	InitWindow(GameResolution::width, GameResolution::height, "Breakout");
+	InitWindow(GameResolution::width * 2, GameResolution::height * 2, "Breakout");
 	SetWindowState(FLAG_WINDOW_MAXIMIZED);
 	SetWindowMinSize(GameResolution::width, GameResolution::height);
 	SetTargetFPS(60);
