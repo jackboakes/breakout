@@ -10,14 +10,8 @@ GameLayer::GameLayer()
 		return texture.id;
 		};
 
-	unsigned int paddleID = AddTexture("../assets/image/paddle.png");
-	unsigned int ballID = AddTexture("../assets/image/ball_default.png");
-	AddTexture("../assets/image/block_blue.png");
-	AddTexture("../assets/image/block_brown.png");
-	AddTexture("../assets/image/block_green.png");
-	AddTexture("../assets/image/block_pink.png");
-
 	Entity paddle;
+	unsigned int paddleID { AddTexture("../assets/image/paddle.png") };
 	paddle.AddFlag(EntityFlags::PLAYER | EntityFlags::MOVABLE | EntityFlags::VISIBLE | EntityFlags::COLLIDABLE);
 	paddle.textureID =		paddleID;
 	paddle.width =			m_Textures[paddleID].width;
@@ -28,6 +22,7 @@ GameLayer::GameLayer()
 	m_Entities.push_back(paddle);
 
 	Entity ball;
+	unsigned int ballID { AddTexture("../assets/image/ball_default.png") };
 	ball.AddFlag(EntityFlags::BALL | EntityFlags::MOVABLE | EntityFlags::VISIBLE | EntityFlags::COLLIDABLE);
 	ball.textureID =		ballID;
 	ball.width =			m_Textures[ballID].width;
@@ -37,6 +32,25 @@ GameLayer::GameLayer()
 	ball.moveSpeed =		100.0f;
 	ball.direction =		{ -1.0f, -1.0f };
 	m_Entities.push_back(ball);
+
+	//constexpr int maxBlockPerRow { 7 };
+
+	Entity block;
+	unsigned int blockBlueID { AddTexture("../assets/image/block_blue.png") };
+	block.AddFlag(EntityFlags::BLOCK | EntityFlags::VISIBLE | EntityFlags::COLLIDABLE);
+	block.textureID = blockBlueID;
+	block.width = m_Textures[blockBlueID].width;
+	block.height = m_Textures[blockBlueID].height;
+	block.position.x = (GameResolution::f_Width / 2.0f) - (ball.width / 2);
+	block.position.y = block.height + 20;
+	m_Entities.push_back(block);
+
+
+	unsigned int blockBrownID { AddTexture("../assets/image/block_brown.png") };
+	unsigned int blockGreenID { AddTexture("../assets/image/block_green.png") };
+	unsigned int blockPinkID { AddTexture("../assets/image/block_pink.png") };
+
+
 }
 
 GameLayer::~GameLayer()
@@ -152,10 +166,18 @@ void GameLayer::Update(float deltaTime)
 
 			if (CheckCollisionRecs(ballBounds, otherBounds))
 			{
+				if (other.HasFlag(EntityFlags::BLOCK))
+				{
+					other.RemoveFlag(COLLIDABLE);
+					other.RemoveFlag(VISIBLE);
+				}
+
 				if (other.HasFlag(EntityFlags::PLAYER))
 				{
 					ball.direction.y *= -1.0f;
 				}
+
+
 			}
 		}
 	}

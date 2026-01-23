@@ -11,7 +11,7 @@ enum EntityFlags : uint32_t {
 	MOVABLE = 1 << 1,
 	COLLIDABLE = 1 << 2,
 	PLAYER = 1 << 3,
-	BRICK = 1 << 4,
+	BLOCK = 1 << 4,
 	BALL = 1 << 5
 };
 
