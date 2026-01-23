@@ -10,8 +10,13 @@ struct CanvasTransform
 	Vector2 offset;
 };
 
-constexpr int screenWidth { 480 };
-constexpr int screenHeight { 360 };
+struct GameResolution
+{
+	static constexpr int width { 480 };
+	static constexpr int height { 360 };
+	static constexpr float f_Width { static_cast<float>(width) };
+	static constexpr float f_Height { static_cast<float>(height) };
+};
 
 CanvasTransform CalculateCanvasTransform()
 {
@@ -19,12 +24,12 @@ CanvasTransform CalculateCanvasTransform()
 	const float windowHeight { static_cast<float>(GetScreenHeight()) };
 
 	const float scale { std::min(
-		windowWidth / static_cast<float>(screenWidth),
-		windowHeight / static_cast<float>(screenHeight)
+		windowWidth / GameResolution::f_Width,
+		windowHeight / GameResolution::f_Height
 	) };
 
-	Vector2 offset { (windowWidth - static_cast<float>(screenWidth) * scale) * 0.5f,
-	(windowHeight - static_cast<float>(screenHeight) * scale) * 0.5f };
+	Vector2 offset { (windowWidth - GameResolution::f_Width * scale) * 0.5f,
+	(windowHeight - GameResolution::f_Height * scale) * 0.5f };
 
 	return { scale, offset };
 }
@@ -32,8 +37,8 @@ CanvasTransform CalculateCanvasTransform()
 int main()
 {
 	SetConfigFlags(FLAG_WINDOW_RESIZABLE);
-	InitWindow(screenWidth, screenHeight, "Breakout");
-	SetWindowMinSize(screenWidth, screenHeight);
+	InitWindow(GameResolution::width, GameResolution::height, "Breakout");
+	SetWindowMinSize(GameResolution::width, GameResolution::height);
 	SetTargetFPS(60);
 
 	Camera2D camera { 0 };
@@ -43,8 +48,8 @@ int main()
 
 	Texture2D paddle { LoadTexture("../assets/image/paddle.png") };
 	Vector2 paddlePosition {
-		(static_cast<float>(screenWidth) / 2.0f) - (paddle.width / 2),
-		screenHeight - paddle.height - 15
+		(GameResolution::f_Width / 2.0f) - (paddle.width / 2),
+		GameResolution::f_Height - paddle.height - 15
 	};
 
 	while (!WindowShouldClose())
@@ -57,8 +62,8 @@ int main()
 
 		const float deltaTime { GetFrameTime() };
 
-
-		constexpr float paddleSpeed { 500.0f };
+		//  pixels per second
+		constexpr float paddleSpeed { 600.0f };
 		Vector2 targetPaddlePosition { paddlePosition };
 
 		if (IsKeyDown(KEY_A) || IsKeyPressed(KEY_LEFT))
@@ -71,7 +76,7 @@ int main()
 			targetPaddlePosition.x += paddleSpeed * deltaTime;
 		}
 
-		targetPaddlePosition.x = std::clamp(targetPaddlePosition.x, 0.0f, static_cast<float>(screenWidth) - static_cast<float>(paddle.width));
+		targetPaddlePosition.x = std::clamp(targetPaddlePosition.x, 0.0f, GameResolution::f_Width - static_cast<float>(paddle.width));
 		paddlePosition.x = targetPaddlePosition.x;
 
 		paddleXValue.append(std::to_string(paddlePosition.x));
