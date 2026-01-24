@@ -1,4 +1,5 @@
 #include "application.h"
+#include "raylib.h"
 #include "globals.h"
 
 Application::Application()

@@ -5,6 +5,13 @@
 #include <cstdint>
 #include <unordered_map>
 
+enum class GameMode {
+	PAUSED,
+	PLAYING,
+	LEVEL_CLEAR
+	//GAME_OVER
+};
+
 enum EntityFlags : uint32_t {
 	NONE = 0,
 	VISIBLE = 1 << 0,
@@ -65,7 +72,8 @@ private:
 
 	const Color m_BackgroundColour { 32, 32, 32, 0 };
 	CanvasTransform CalculateCanvasTransform() const;
-	bool m_Pause { false };
+	
+	GameMode m_GameMode { GameMode::PAUSED };
 
 	int m_Score { 0 };
 

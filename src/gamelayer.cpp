@@ -6,7 +6,6 @@
 
 GameLayer::GameLayer()
 {
-
 	m_Font = LoadFontEx("../assets/font/NES.ttf", 32, 0, 250);
 
 	auto AddTexture { [&](const char* path) {
@@ -40,7 +39,6 @@ GameLayer::GameLayer()
 	m_Entities.push_back(ball);
 
 	
-	// Load block textures
 	// The order matters 0 = top 4 = bottom
 	unsigned int blockTextureIds[4];
 
@@ -51,13 +49,12 @@ GameLayer::GameLayer()
 
 	constexpr int maxBlockPerRow		{ 7 };
 	constexpr int paddingBetweenBlock	{ 2 };
-	
-	const int blockWidth { m_Textures[blockTextureIds[0]].width };
-	const int blockHeight { m_Textures[blockTextureIds[0]].height };
 
-	const int totalBlockWidth { (maxBlockPerRow * blockWidth) + ((maxBlockPerRow - 1) * paddingBetweenBlock) };
+	const int blockWidth	{ m_Textures[blockTextureIds[0]].width };
+	const int blockHeight	{ m_Textures[blockTextureIds[0]].height };
 
-	const float startX { (GameResolution::f_Width * 0.5f) - (static_cast<float>(totalBlockWidth) * 0.5f) };
+	const int totalBlockWidth	{ (maxBlockPerRow * blockWidth) + ((maxBlockPerRow - 1) * paddingBetweenBlock) };
+	const float startX			{ (GameResolution::f_Width * 0.5f) - (static_cast<float>(totalBlockWidth) * 0.5f) };
 
 
 	for (int i { 0 }; i < 4; i++)
@@ -91,14 +88,14 @@ bool GameLayer::ProcessInput()
 {
 	bool inputProcessed { false };
 
-	if (IsKeyPressed(KEY_A) || IsKeyPressed(KEY_D) || IsKeyPressed(KEY_SPACE))
+	if (m_GameMode == GameMode::PAUSED)
 	{
-		m_Pause = true;
-	}
-
-	if (m_Pause == false)
-	{
-		return false;
+		if (IsKeyPressed(KEY_A) || IsKeyPressed(KEY_D) || IsKeyPressed(KEY_SPACE))
+		{
+			m_GameMode = GameMode::PLAYING;
+			return true;  // Consume this input, don't process movement yet
+		}
+		return false;  // Still paused, don't process any input
 	}
 
 	for (auto& entity : m_Entities)
@@ -130,32 +127,36 @@ void GameLayer::Update(float deltaTime)
 	m_Camera2D.zoom = canvasTransform.scale;
 	m_Camera2D.offset = canvasTransform.offset;
 
-	if (m_Pause == false)
+	switch (m_GameMode)
 	{
-		return;
-	}
+	case GameMode::PAUSED:
+	{
 
-	// Update movement
-	for (auto& entity : m_Entities)
+	}
+	break;
+	case GameMode::PLAYING:
 	{
-		if (entity.HasFlag(EntityFlags::MOVABLE))
+		// Update movement
+		for (auto& entity : m_Entities)
 		{
-			const float displacement { entity.moveSpeed * deltaTime };
-			entity.position.x += entity.direction.x * displacement;
-			entity.position.y += entity.direction.y * displacement;
+			if (entity.HasFlag(EntityFlags::MOVABLE))
+			{
+				const float displacement { entity.moveSpeed * deltaTime };
+				entity.position.x += entity.direction.x * displacement;
+				entity.position.y += entity.direction.y * displacement;
+			}
+
+			if (entity.HasFlag(EntityFlags::PLAYER))
+			{
+				entity.position.x = std::clamp(entity.position.x, 0.0f, GameResolution::f_Width - static_cast<float>(entity.width));
+			}
 		}
 
-		if (entity.HasFlag(EntityFlags::PLAYER))
+		// Check Collisions with wall
+		for (auto& ball : m_Entities)
 		{
-			entity.position.x = std::clamp(entity.position.x, 0.0f, GameResolution::f_Width - static_cast<float>(entity.width));
-		}
-	}
+			if (!ball.HasFlag(EntityFlags::BALL)) continue;
 
-	// Check Collisions with wall
-	for (auto& ball : m_Entities)
-	{
-		if (!ball.HasFlag(EntityFlags::BALL)) continue;
-	
 			// Screen Bouncing
 			if (ball.position.x <= 0 || ball.position.x + ball.width >= GameResolution::width)
 			{
@@ -168,59 +169,94 @@ void GameLayer::Update(float deltaTime)
 				ball.direction.y *= -1.0f;
 				ball.position.y = std::max(0.0f, ball.position.y);
 			}
-	}
+		}
 
-	// Check for collision with paddle or block
-	for (auto& ball : m_Entities)
-	{
-		if (!ball.HasFlag(EntityFlags::BALL)) continue;
-
-		Rectangle ballBounds { ball.GetCollider() };
-		bool hasCollided { false };
-
-		for (auto& other : m_Entities)
+		// Check for collision with paddle or block
+		for (auto& ball : m_Entities)
 		{
-			if (&ball == &other) continue;
-			if (!other.HasFlag(EntityFlags::COLLIDABLE)) continue;
+			if (!ball.HasFlag(EntityFlags::BALL)) continue;
 
-			Rectangle otherBounds { other.GetCollider() };
+			Rectangle ballBounds { ball.GetCollider() };
+			bool hasCollided { false };
 
-			if (CheckCollisionRecs(ballBounds, otherBounds))
+			for (auto& other : m_Entities)
 			{
-				if (other.HasFlag(EntityFlags::BLOCK))
-				{
-					m_Score += 50;
-					other.RemoveFlag(COLLIDABLE);
-					other.RemoveFlag(VISIBLE);
+				if (&ball == &other) continue;
+				if (!other.HasFlag(EntityFlags::COLLIDABLE)) continue;
 
-					// Ensure the ball flips direction only once in the case of the ball hitting inbetween two blocks
-					if (hasCollided == false)
+				Rectangle otherBounds { other.GetCollider() };
+
+				if (CheckCollisionRecs(ballBounds, otherBounds))
+				{
+					if (other.HasFlag(EntityFlags::BLOCK))
 					{
-						ball.direction.y *= -1.0f;
-						hasCollided = true;
+						m_Score += 50;
+						other.RemoveFlag(COLLIDABLE);
+						other.RemoveFlag(VISIBLE);
+
+						// Ensure the ball flips direction only once in the case of the ball hitting inbetween two blocks
+						if (hasCollided == false)
+						{
+							ball.direction.y *= -1.0f;
+							hasCollided = true;
+						}
 					}
-				}
 
-				if (other.HasFlag(EntityFlags::PLAYER))
-				{
-					float paddleCenterX = other.position.x + other.width * 0.5f;
-					float ballCenterX = ball.position.x + ball.width * 0.5f;
+					if (other.HasFlag(EntityFlags::PLAYER))
+					{
+						float paddleCenterX = other.position.x + other.width * 0.5f;
+						float ballCenterX = ball.position.x + ball.width * 0.5f;
 
-					// Dividing by (other.width * 0.5f) normalises the offset to the range ( -1, 1 )
-					// The offset is ( 0, -1 ) when the ball hits the centre it will shoot it straight up,
-					// ( -1 , -1 ) is the far left it will shoot the ball left
-					// ( 1, -1 )  is the far right it will shoot the ball right
-					float offsetX = (ballCenterX - paddleCenterX) / (other.width * 0.5f);
-					
-					// The y component always shoot us in the opposite y direction
-					Vector2 newDirection = Vector2Normalize({ offsetX, -1.0f }) * Vector2Length(ball.direction);
-					ball.direction = newDirection;
+						// Dividing by (other.width * 0.5f) normalises the offset to the range ( -1, 1 )
+						// The offset is ( 0, -1 ) when the ball hits the centre it will shoot it straight up,
+						// ( -1 , -1 ) is the far left it will shoot the ball left
+						// ( 1, -1 )  is the far right it will shoot the ball right
+						float offsetX = (ballCenterX - paddleCenterX) / (other.width * 0.5f);
 
-					ball.position.y = other.position.y - ball.height;
+						// The y component always shoot us in the opposite y direction
+						Vector2 newDirection = Vector2Normalize({ offsetX, -1.0f }) * Vector2Length(ball.direction);
+						ball.direction = newDirection;
+
+						ball.position.y = other.position.y - ball.height;
+					}
 				}
 			}
 		}
+
+		// Check for level completion
+		bool hasWon = true;
+		for (const auto& block : m_Entities)
+		{
+			if (!block.HasFlag(EntityFlags::BLOCK)) continue;
+			
+			if (block.HasFlag(EntityFlags::VISIBLE))
+			{
+				hasWon = false;
+			}
+		}
+
+		if (hasWon == true)
+		{
+			m_Score += 250;
+			m_GameMode = GameMode::LEVEL_CLEAR;
+		}
 	}
+	break;
+	case GameMode::LEVEL_CLEAR:
+	{
+		// Respawn blocks
+		for (auto& block : m_Entities)
+		{
+			if (!block.HasFlag(EntityFlags::BLOCK)) continue;
+
+			block.AddFlag(EntityFlags::VISIBLE | EntityFlags::COLLIDABLE);
+		}
+		m_GameMode = GameMode::PLAYING;
+	}
+	break;
+	}
+
+	
 }
 
 void GameLayer::Draw()
