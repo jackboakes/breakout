@@ -5,11 +5,11 @@
 
 GameLayer::GameLayer()
 {
-	auto AddTexture = [&](const char* path) {
+	auto AddTexture { [&](const char* path) {
 		Texture2D texture = LoadTexture(path);
 		m_Textures[texture.id] = texture;
 		return texture.id;
-		};
+		} };
 
 	Entity paddle;
 	paddle.AddFlag(EntityFlags::PLAYER | EntityFlags::MOVABLE | EntityFlags::VISIBLE | EntityFlags::COLLIDABLE);
@@ -152,12 +152,12 @@ void GameLayer::Update(float deltaTime)
 			// Screen Bouncing
 			if (ball.position.x <= 0 || ball.position.x + ball.width >= GameResolution::width)
 			{
-				ball.direction.x *= -1;
+				ball.direction.x *= -1.0f;
 			}
 
 			if (ball.position.y <= 0)
 			{
-				ball.direction.y *= -1;
+				ball.direction.y *= -1.0f;
 			}
 	}
 
@@ -166,14 +166,14 @@ void GameLayer::Update(float deltaTime)
 	{
 		if (!ball.HasFlag(EntityFlags::BALL)) continue;
 
-		Rectangle ballBounds = ball.GetCollider();
+		Rectangle ballBounds { ball.GetCollider() };
 
 		for (auto& other : m_Entities)
 		{
 			if (&ball == &other) continue;
 			if (!other.HasFlag(EntityFlags::COLLIDABLE)) continue;
 
-			Rectangle otherBounds = other.GetCollider();
+			Rectangle otherBounds { other.GetCollider() };
 
 			if (CheckCollisionRecs(ballBounds, otherBounds))
 			{
@@ -181,14 +181,25 @@ void GameLayer::Update(float deltaTime)
 				{
 					other.RemoveFlag(COLLIDABLE);
 					other.RemoveFlag(VISIBLE);
+					// TODO:: this is a temp naive solution
+					ball.direction.y *= -1.0f;
 				}
 
 				if (other.HasFlag(EntityFlags::PLAYER))
 				{
-					ball.direction.y *= -1.0f;
+					float paddleCenterX = other.position.x + other.width * 0.5f;
+					float ballCenterX = ball.position.x + ball.width * 0.5f;
+
+					// Dividing by (other.width * 0.5f) normalises the offset to the range ( -1, 1 )
+					// The offset is ( 0, -1 ) when the ball hits the centre it will shoot it straight up,
+					// ( -1 , -1 ) is the far left it will shoot the ball left
+					// ( 1, -1 )  is the far right it will shoot the ball right
+					float offsetX = (ballCenterX - paddleCenterX) / (other.width * 0.5f);
+					
+					// The y component always shoot us in the opposite y direction
+					Vector2 newDirection = Vector2Normalize({ offsetX, -1.0f }) * Vector2Length(ball.direction);
+					ball.direction = newDirection;
 				}
-
-
 			}
 		}
 	}
@@ -204,7 +215,7 @@ void GameLayer::Draw()
 	{
 		if (entity.HasFlag(EntityFlags::VISIBLE))
 		{
-			auto search = m_Textures.find(entity.textureID);
+			auto search { m_Textures.find(entity.textureID) };
 			if (search != m_Textures.end())
 			{
 				DrawTexture(search->second, entity.position.x, entity.position.y, WHITE);
