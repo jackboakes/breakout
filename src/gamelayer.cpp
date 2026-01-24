@@ -30,8 +30,8 @@ GameLayer::GameLayer()
 	ball.height =			m_Textures[ballID].height;
 	ball.position.x =		(GameResolution::f_Width / 2.0f) - (ball.width / 2);
 	ball.position.y =		paddle.position.y - ball.height - 2;
-	ball.moveSpeed =		100.0f;
-	ball.direction =		{ -1.0f, -1.0f };
+	ball.moveSpeed =		200.0f;
+	ball.direction =		{ -0.5f, -1.0f };
 	Vector2Normalize(ball.direction);
 	m_Entities.push_back(ball);
 
@@ -39,10 +39,11 @@ GameLayer::GameLayer()
 	// Load block textures
 	// The order matters 0 = top 4 = bottom
 	unsigned int blockTextureIds[4];
-	blockTextureIds[0] = AddTexture("../assets/image/block_blue.png");
+
+	blockTextureIds[0] = AddTexture("../assets/image/block_pink.png");
 	blockTextureIds[1] = AddTexture("../assets/image/block_brown.png");
-	blockTextureIds[2] = AddTexture("../assets/image/block_green.png");
-	blockTextureIds[3] = AddTexture("../assets/image/block_pink.png");
+	blockTextureIds[2] = AddTexture("../assets/image/block_green.png"); 
+	blockTextureIds[3] = AddTexture("../assets/image/block_blue.png"); 
 
 	constexpr int maxBlockPerRow		{ 7 };
 	constexpr int paddingBetweenBlock	{ 2 };
@@ -153,11 +154,13 @@ void GameLayer::Update(float deltaTime)
 			if (ball.position.x <= 0 || ball.position.x + ball.width >= GameResolution::width)
 			{
 				ball.direction.x *= -1.0f;
+				ball.position.x = std::clamp(ball.position.x, 0.0f, GameResolution::f_Width - ball.width);
 			}
 
 			if (ball.position.y <= 0)
 			{
 				ball.direction.y *= -1.0f;
+				ball.position.y = std::max(0.0f, ball.position.y);
 			}
 	}
 
@@ -167,8 +170,6 @@ void GameLayer::Update(float deltaTime)
 		if (!ball.HasFlag(EntityFlags::BALL)) continue;
 
 		Rectangle ballBounds { ball.GetCollider() };
-		
-		
 		bool hasCollided { false };
 
 		for (auto& other : m_Entities)
@@ -207,6 +208,8 @@ void GameLayer::Update(float deltaTime)
 					// The y component always shoot us in the opposite y direction
 					Vector2 newDirection = Vector2Normalize({ offsetX, -1.0f }) * Vector2Length(ball.direction);
 					ball.direction = newDirection;
+
+					ball.position.y = other.position.y - ball.height;
 				}
 			}
 		}

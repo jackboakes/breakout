@@ -67,6 +67,8 @@ private:
 	CanvasTransform CalculateCanvasTransform() const;
 	bool m_Pause { false };
 
+	int m_Score { 0 };
+
 public:
 	GameLayer();
 	~GameLayer() override;
