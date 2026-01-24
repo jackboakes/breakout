@@ -133,9 +133,9 @@ void GameLayer::Update(float deltaTime)
 	{
 		if (entity.HasFlag(EntityFlags::MOVABLE))
 		{
-			const float velocity { entity.moveSpeed * deltaTime };
-			entity.position.x += entity.direction.x * velocity;
-			entity.position.y += entity.direction.y * velocity;
+			const float displacement { entity.moveSpeed * deltaTime };
+			entity.position.x += entity.direction.x * displacement;
+			entity.position.y += entity.direction.y * displacement;
 		}
 
 		if (entity.HasFlag(EntityFlags::PLAYER))
@@ -167,6 +167,9 @@ void GameLayer::Update(float deltaTime)
 		if (!ball.HasFlag(EntityFlags::BALL)) continue;
 
 		Rectangle ballBounds { ball.GetCollider() };
+		
+		
+		bool hasCollided { false };
 
 		for (auto& other : m_Entities)
 		{
@@ -181,8 +184,13 @@ void GameLayer::Update(float deltaTime)
 				{
 					other.RemoveFlag(COLLIDABLE);
 					other.RemoveFlag(VISIBLE);
-					// TODO:: this is a temp naive solution
-					ball.direction.y *= -1.0f;
+
+					// Ensure the ball flips direction only once in the case of the ball hitting inbetween two blocks
+					if (hasCollided == false)
+					{
+						ball.direction.y *= -1.0f;
+						hasCollided = true;
+					}
 				}
 
 				if (other.HasFlag(EntityFlags::PLAYER))
