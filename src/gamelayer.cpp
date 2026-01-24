@@ -1,10 +1,14 @@
 #include "gamelayer.h"
 #include "globals.h"
-#include <algorithm>
 #include "raymath.h"
+#include <algorithm>
+#include <string>
 
 GameLayer::GameLayer()
 {
+
+	m_Font = LoadFontEx("../assets/font/NES.ttf", 32, 0, 250);
+
 	auto AddTexture { [&](const char* path) {
 		Texture2D texture = LoadTexture(path);
 		m_Textures[texture.id] = texture;
@@ -66,7 +70,7 @@ GameLayer::GameLayer()
 			block.width =			m_Textures[blockTextureIds[i]].width;
 			block.height =			m_Textures[blockTextureIds[i]].height;
 			block.position.x =		startX + static_cast<float>(j * (blockWidth + paddingBetweenBlock));
-			block.position.y =		20 + i * (block.height + paddingBetweenBlock);
+			block.position.y =		30 + i * (block.height + paddingBetweenBlock);
 			m_Entities.push_back(block);
 		}
 	}
@@ -79,6 +83,8 @@ GameLayer::~GameLayer()
 		UnloadTexture(texture);
 	}
 	m_Textures.clear();
+
+	UnloadFont(m_Font);
 }
 
 bool GameLayer::ProcessInput()
@@ -183,6 +189,7 @@ void GameLayer::Update(float deltaTime)
 			{
 				if (other.HasFlag(EntityFlags::BLOCK))
 				{
+					m_Score += 50;
 					other.RemoveFlag(COLLIDABLE);
 					other.RemoveFlag(VISIBLE);
 
@@ -233,6 +240,12 @@ void GameLayer::Draw()
 			}
 		}
 	}
+
+	const std::string scoreText { std::to_string(m_Score) };
+	const Vector2 scoreTextSize { MeasureTextEx(m_Font, scoreText.c_str(), 16, 2) };
+	const float centreX { (GameResolution::f_Width - scoreTextSize.x) * 0.5f };
+	const float centreY { (30.0f - scoreTextSize.y) * 0.5f };
+	DrawTextEx(m_Font, scoreText.c_str(), { centreX, centreY }, 16, 2, WHITE);
 
 	EndMode2D();
 

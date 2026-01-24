@@ -1,3 +1,5 @@
+#pragma once
+
 struct GameResolution
 {
 	static constexpr int width { 480 };

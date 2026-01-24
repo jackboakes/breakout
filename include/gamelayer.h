@@ -69,6 +69,9 @@ private:
 
 	int m_Score { 0 };
 
+	// placeholder;
+	Font m_Font;
+
 public:
 	GameLayer();
 	~GameLayer() override;
