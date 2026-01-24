@@ -1,6 +1,7 @@
 #include "gamelayer.h"
 #include "globals.h"
 #include <algorithm>
+#include "raymath.h"
 
 GameLayer::GameLayer()
 {
@@ -11,8 +12,8 @@ GameLayer::GameLayer()
 		};
 
 	Entity paddle;
-	unsigned int paddleID { AddTexture("../assets/image/paddle.png") };
 	paddle.AddFlag(EntityFlags::PLAYER | EntityFlags::MOVABLE | EntityFlags::VISIBLE | EntityFlags::COLLIDABLE);
+	unsigned int paddleID	{ AddTexture("../assets/image/paddle.png") };
 	paddle.textureID =		paddleID;
 	paddle.width =			m_Textures[paddleID].width;
 	paddle.height =			m_Textures[paddleID].height;
@@ -22,8 +23,8 @@ GameLayer::GameLayer()
 	m_Entities.push_back(paddle);
 
 	Entity ball;
-	unsigned int ballID { AddTexture("../assets/image/ball_default.png") };
 	ball.AddFlag(EntityFlags::BALL | EntityFlags::MOVABLE | EntityFlags::VISIBLE | EntityFlags::COLLIDABLE);
+	unsigned int ballID		{ AddTexture("../assets/image/ball_default.png") };
 	ball.textureID =		ballID;
 	ball.width =			m_Textures[ballID].width;
 	ball.height =			m_Textures[ballID].height;
@@ -31,17 +32,20 @@ GameLayer::GameLayer()
 	ball.position.y =		paddle.position.y - ball.height - 2;
 	ball.moveSpeed =		100.0f;
 	ball.direction =		{ -1.0f, -1.0f };
+	Vector2Normalize(ball.direction);
 	m_Entities.push_back(ball);
 
 	
-
+	// Load block textures
+	// The order matters 0 = top 4 = bottom
 	unsigned int blockTextureIds[4];
 	blockTextureIds[0] = AddTexture("../assets/image/block_blue.png");
 	blockTextureIds[1] = AddTexture("../assets/image/block_brown.png");
 	blockTextureIds[2] = AddTexture("../assets/image/block_green.png");
 	blockTextureIds[3] = AddTexture("../assets/image/block_pink.png");
-	constexpr int maxBlockPerRow { 7 };
-	constexpr int paddingBetweenBlock { 2 };
+
+	constexpr int maxBlockPerRow		{ 7 };
+	constexpr int paddingBetweenBlock	{ 2 };
 	
 	const int blockWidth { m_Textures[blockTextureIds[0]].width };
 	const int blockHeight { m_Textures[blockTextureIds[0]].height };
@@ -57,11 +61,11 @@ GameLayer::GameLayer()
 		{
 			Entity block;
 			block.AddFlag(EntityFlags::BLOCK | EntityFlags::VISIBLE | EntityFlags::COLLIDABLE);
-			block.textureID = blockTextureIds[i];
-			block.width = m_Textures[blockTextureIds[i]].width;
-			block.height = m_Textures[blockTextureIds[i]].height;
-			block.position.x = startX + static_cast<float>(j * (blockWidth + paddingBetweenBlock));
-			block.position.y = 20 + i * (block.height + paddingBetweenBlock);
+			block.textureID =		blockTextureIds[i];
+			block.width =			m_Textures[blockTextureIds[i]].width;
+			block.height =			m_Textures[blockTextureIds[i]].height;
+			block.position.x =		startX + static_cast<float>(j * (blockWidth + paddingBetweenBlock));
+			block.position.y =		20 + i * (block.height + paddingBetweenBlock);
 			m_Entities.push_back(block);
 		}
 	}
@@ -129,8 +133,9 @@ void GameLayer::Update(float deltaTime)
 	{
 		if (entity.HasFlag(EntityFlags::MOVABLE))
 		{
-			entity.position.x += entity.direction.x * entity.moveSpeed * deltaTime;
-			entity.position.y += entity.direction.y * entity.moveSpeed * deltaTime;
+			const float velocity { entity.moveSpeed * deltaTime };
+			entity.position.x += entity.direction.x * velocity;
+			entity.position.y += entity.direction.y * velocity;
 		}
 
 		if (entity.HasFlag(EntityFlags::PLAYER))
@@ -154,17 +159,9 @@ void GameLayer::Update(float deltaTime)
 			{
 				ball.direction.y *= -1;
 			}
-
-			// Reset when off screen
-			if (ball.position.y > GameResolution::height)
-			{
-				ball.position.x = (GameResolution::f_Width / 2.0f) - (ball.width / 2);
-				ball.position.y = (GameResolution::f_Height * 0.5f);
-			}
-		
 	}
 
-	// Check for collision with paddle or brick
+	// Check for collision with paddle or block
 	for (auto& ball : m_Entities)
 	{
 		if (!ball.HasFlag(EntityFlags::BALL)) continue;
