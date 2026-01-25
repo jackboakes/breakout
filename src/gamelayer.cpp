@@ -242,11 +242,11 @@ void GameLayer::Update(float deltaTime)
 						float deltaY { ballCenterY - blockCenterY };
 
 						// Normalise by block dimensions to get aspect-ratio-independent comparison
-						float normalizedX = deltaX / (block.width * 0.5f);
-						float normalizedY = deltaY / (block.height * 0.5f);
+						float normalisedX { deltaX / (block.width * 0.5f) };
+						float normalisedY { deltaY / (block.height * 0.5f) };
 						
-						// The axis with larger absolute normalised value indicates which side was hit
-						if (std::abs(normalizedX) > std::abs(normalizedY))
+						// The component with the larger absolute normalised value indicates which side was hit
+						if (std::abs(normalisedX) > std::abs(normalisedY))
 						{
 							// Hit left or right side
 							ball.direction.x *= -1.0f;  
@@ -278,20 +278,44 @@ void GameLayer::Update(float deltaTime)
 
 				if (CheckCollisionRecs(ballBounds, paddleBounds))
 				{
-					float paddleCenterX = paddle.position.x + paddle.width * 0.5f;
-					float ballCenterX = ball.position.x + ball.width * 0.5f;
+					float paddleCenterX { paddle.position.x + paddle.width * 0.5f };
+					float ballCenterX	{ ball.position.x + ball.width * 0.5f };
 
-					// Dividing by (paddle.width * 0.5f) normalises the offset to the range ( -1, 1 )
-					// The offset is ( 0, -1 ) when the ball hits the centre it will shoot it straight up,
-					// ( -1 , -1 ) is the far left it will shoot the ball left
-					// ( 1, -1 )  is the far right it will shoot the ball right
-					float offsetX = (ballCenterX - paddleCenterX) / (paddle.width * 0.5f);
+					// Calculate collision centers
+					float paddleCenterY { paddle.position.y + paddle.height * 0.5f };
+					float ballCenterY	{ ball.position.y + ball.height * 0.5f };
 
+					// Get direction from paddle centre to the ball centre
+					float deltaX { ballCenterX - paddleCenterX };
+					float deltaY { ballCenterY - paddleCenterY };
+
+					// Normalise by paddle dimensions to get aspect-ratio-independent comparison
+					float normalisedX { deltaX / (paddle.width * 0.5f) };
+					float normalisedY { deltaY / (paddle.height * 0.5f) };
+
+					// Scale to make the bounce flatter 
+					float deflection { normalisedX * 1.5f };
+		
 					// The y component always shoot us in the opposite y direction
-					Vector2 newDirection = Vector2Normalize({ offsetX, -1.0f }) * Vector2Length(ball.direction);
+					Vector2 newDirection { Vector2Normalize({ deflection, -1.0f }) };
 					ball.direction = newDirection;
 
-					ball.position.y = paddle.position.y - ball.height;
+					// If its a side hit snap x position to side to prevent overlap
+					if (std::abs(normalisedX) >= std::abs(normalisedY))
+					{
+						if (deltaX < 0)
+						{
+							// Left side
+							ball.position.x = paddle.position.x - ball.width;
+						}
+						else
+						{
+							// Right side
+							ball.position.x = paddle.position.x + paddle.width;
+						}
+
+					}
+
 				}
 			}
 		}
