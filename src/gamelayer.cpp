@@ -228,11 +228,35 @@ void GameLayer::Update(float deltaTime)
 					block.RemoveFlag(COLLIDABLE);
 					block.RemoveFlag(VISIBLE);
 
-					// TODO:: Need to change direction based on the side of the block the ball hit
 					// Ensure the ball flips direction only once in the case of the ball hitting inbetween two blocks
 					if (!hasCollided)
 					{
-						ball.direction.y *= -1.0f;
+						// Calculate ball and block centers
+						float ballCenterX	{ ball.position.x + ball.width * 0.5f };
+						float ballCenterY	{ ball.position.y + ball.height * 0.5f };
+						float blockCenterX	{ block.position.x + block.width * 0.5f };
+						float blockCenterY	{ block.position.y + block.height * 0.5f };
+
+						// Get direciton from block centre to the ball centre
+						float deltaX { ballCenterX - blockCenterX };
+						float deltaY { ballCenterY - blockCenterY };
+
+						// Normalise by block dimensions to get aspect-ratio-independent comparison
+						float normalizedX = deltaX / (block.width * 0.5f);
+						float normalizedY = deltaY / (block.height * 0.5f);
+						
+						// The axis with larger absolute normalised value indicates which side was hit
+						if (std::abs(normalizedX) > std::abs(normalizedY))
+						{
+							// Hit left or right side
+							ball.direction.x *= -1.0f;  
+						}
+						else
+						{
+							// Hit top or bottom
+							ball.direction.y *= -1.0f;  
+						}
+						
 						hasCollided = true;
 					}
 				}
