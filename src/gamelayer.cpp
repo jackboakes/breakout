@@ -3,6 +3,7 @@
 #include "raymath.h"
 #include <algorithm>
 #include <string>
+#include <cmath>
 
 GameLayer::GameLayer()
 {
@@ -15,61 +16,80 @@ GameLayer::GameLayer()
 		} };
 
 	Entity paddle;
-	paddle.AddFlag(EntityFlags::PLAYER | EntityFlags::MOVABLE | EntityFlags::VISIBLE | EntityFlags::COLLIDABLE);
+	paddle.AddFlag(EntityFlags::MOVABLE | EntityFlags::VISIBLE | EntityFlags::COLLIDABLE);
+	paddle.type =			EntityType::PLAYER;
 	unsigned int paddleID	{ AddTexture("../assets/image/paddle.png") };
 	paddle.textureID =		paddleID;
 	paddle.width =			m_Textures[paddleID].width;
 	paddle.height =			m_Textures[paddleID].height;
 	paddle.position.x =		(GameResolution::f_Width / 2.0f) - (paddle.width / 2);
 	paddle.position.y =		GameResolution::f_Height - paddle.height - 15;
-	paddle.moveSpeed =		600.0f;
+	paddle.moveSpeed =		400.0f;
 	m_Entities.push_back(paddle);
 
 	Entity ball;
-	ball.AddFlag(EntityFlags::BALL | EntityFlags::MOVABLE | EntityFlags::VISIBLE | EntityFlags::COLLIDABLE);
+	ball.AddFlag(EntityFlags::MOVABLE | EntityFlags::VISIBLE | EntityFlags::COLLIDABLE);
+	ball.type =				EntityType::BALL;
 	unsigned int ballID		{ AddTexture("../assets/image/ball_default.png") };
 	ball.textureID =		ballID;
 	ball.width =			m_Textures[ballID].width;
 	ball.height =			m_Textures[ballID].height;
 	ball.position.x =		(GameResolution::f_Width / 2.0f) - (ball.width / 2);
 	ball.position.y =		paddle.position.y - ball.height - 2;
-	ball.moveSpeed =		200.0f;
+	ball.moveSpeed =		250.0f;
 	ball.direction =		{ -0.5f, -1.0f };
 	Vector2Normalize(ball.direction);
 	m_Entities.push_back(ball);
 
 	
-	// The order matters 0 = top 4 = bottom
+	// The order matters 0 = top 3 = bottom
 	unsigned int blockTextureIds[4];
-
 	blockTextureIds[0] = AddTexture("../assets/image/block_pink.png");
 	blockTextureIds[1] = AddTexture("../assets/image/block_brown.png");
 	blockTextureIds[2] = AddTexture("../assets/image/block_green.png"); 
 	blockTextureIds[3] = AddTexture("../assets/image/block_blue.png"); 
 
-	constexpr int maxBlockPerRow		{ 7 };
-	constexpr int paddingBetweenBlock	{ 2 };
+	m_BlockWidth	= m_Textures[blockTextureIds[0]].width;
+	m_BlockHeight	= m_Textures[blockTextureIds[0]].height;
 
-	const int blockWidth	{ m_Textures[blockTextureIds[0]].width };
-	const int blockHeight	{ m_Textures[blockTextureIds[0]].height };
-
-	const int totalBlockWidth	{ (maxBlockPerRow * blockWidth) + ((maxBlockPerRow - 1) * paddingBetweenBlock) };
+	const int totalBlockWidth	{ (m_MaxBlocksPerRow * m_BlockWidth) + ((m_MaxBlocksPerRow - 1) * m_BlockPadding) };
 	const float startX			{ (GameResolution::f_Width * 0.5f) - (static_cast<float>(totalBlockWidth) * 0.5f) };
 
 
-	for (int i { 0 }; i < 4; i++)
+	for (int i { 0 }; i < m_NumBlockRows; i++)
 	{
-		for (int j { 0 }; j < maxBlockPerRow; j++)
+		for (int j { 0 }; j < m_MaxBlocksPerRow; j++)
 		{
 			Entity block;
-			block.AddFlag(EntityFlags::BLOCK | EntityFlags::VISIBLE | EntityFlags::COLLIDABLE);
+			block.type =			EntityType::BLOCK;
 			block.textureID =		blockTextureIds[i];
-			block.width =			m_Textures[blockTextureIds[i]].width;
-			block.height =			m_Textures[blockTextureIds[i]].height;
-			block.position.x =		startX + static_cast<float>(j * (blockWidth + paddingBetweenBlock));
-			block.position.y =		30 + i * (block.height + paddingBetweenBlock);
+			block.width =			m_BlockWidth;
+			block.height =			m_BlockHeight;
+			block.position.x =		startX + static_cast<float>(j * (m_BlockWidth + m_BlockPadding));
+			block.position.y =		m_BlockStartOffset + i * (block.height + m_BlockPadding);
+			block.targetPosition =	block.position;
 			m_Entities.push_back(block);
 		}
+	}
+
+	const int numBlocksToSkip { (m_MaxBlocksPerRow - m_currentBlocksPerRow) / 2 };
+	int blockCounter { 0 };
+	for (auto& block : m_Entities)
+	{
+		if (block.type != EntityType::BLOCK) continue;
+
+		int column { blockCounter % m_MaxBlocksPerRow };
+
+		if (column >= numBlocksToSkip && column < (numBlocksToSkip + m_currentBlocksPerRow))
+		{
+			block.AddFlag(EntityFlags::VISIBLE | EntityFlags::COLLIDABLE);
+		}
+		else
+		{
+			block.RemoveFlag(EntityFlags::VISIBLE | EntityFlags::COLLIDABLE);
+		}
+
+		blockCounter++;
 	}
 }
 
@@ -93,14 +113,14 @@ bool GameLayer::ProcessInput()
 		if (IsKeyPressed(KEY_A) || IsKeyPressed(KEY_D) || IsKeyPressed(KEY_SPACE))
 		{
 			m_GameMode = GameMode::PLAYING;
-			return true;  // Consume this input, don't process movement yet
+			return true;
 		}
-		return false;  // Still paused, don't process any input
+		return false;
 	}
 
 	for (auto& entity : m_Entities)
 	{
-		if (entity.HasFlag(EntityFlags::PLAYER))
+		if (entity.type == EntityType::PLAYER)
 		{
 			entity.direction.x = 0.0f;
 
@@ -136,6 +156,22 @@ void GameLayer::Update(float deltaTime)
 	break;
 	case GameMode::PLAYING:
 	{
+		//// Handle animating blocks
+		for (auto& entity : m_Entities)
+		{
+			if (entity.HasFlag(EntityFlags::ANIMATING))
+			{
+				constexpr float lerpSpeed { 1.5f };
+				entity.position.y = Lerp(entity.position.y, entity.targetPosition.y, lerpSpeed * deltaTime);
+
+				if (fabs(entity.position.y - entity.targetPosition.y) <= 0.0f)
+				{
+					entity.position.y = entity.targetPosition.y;
+					entity.RemoveFlag(EntityFlags::ANIMATING);
+				}
+			}
+		}
+
 		// Update movement
 		for (auto& entity : m_Entities)
 		{
@@ -146,7 +182,7 @@ void GameLayer::Update(float deltaTime)
 				entity.position.y += entity.direction.y * displacement;
 			}
 
-			if (entity.HasFlag(EntityFlags::PLAYER))
+			if (entity.type == EntityType::PLAYER)
 			{
 				entity.position.x = std::clamp(entity.position.x, 0.0f, GameResolution::f_Width - static_cast<float>(entity.width));
 			}
@@ -155,7 +191,7 @@ void GameLayer::Update(float deltaTime)
 		// Check Collisions with wall
 		for (auto& ball : m_Entities)
 		{
-			if (!ball.HasFlag(EntityFlags::BALL)) continue;
+			if (ball.type != EntityType::BALL) continue;
 
 			// Screen Bouncing
 			if (ball.position.x <= 0 || ball.position.x + ball.width >= GameResolution::width)
@@ -171,71 +207,103 @@ void GameLayer::Update(float deltaTime)
 			}
 		}
 
-		// Check for collision with paddle or block
+		// Check ball collision vs blocks
 		for (auto& ball : m_Entities)
 		{
-			if (!ball.HasFlag(EntityFlags::BALL)) continue;
+			if (ball.type != EntityType::BALL) continue;
 
 			Rectangle ballBounds { ball.GetCollider() };
 			bool hasCollided { false };
 
-			for (auto& other : m_Entities)
+			for (auto& block : m_Entities)
 			{
-				if (&ball == &other) continue;
-				if (!other.HasFlag(EntityFlags::COLLIDABLE)) continue;
+				if (block.type != EntityType::BLOCK) continue;
+				if (!block.HasFlag(EntityFlags::COLLIDABLE)) continue;
 
-				Rectangle otherBounds { other.GetCollider() };
+				Rectangle blockBounds { block.GetCollider() };
 
-				if (CheckCollisionRecs(ballBounds, otherBounds))
+				if (CheckCollisionRecs(ballBounds, blockBounds))
 				{
-					if (other.HasFlag(EntityFlags::BLOCK))
+					m_Score += 50;
+					block.RemoveFlag(COLLIDABLE);
+					block.RemoveFlag(VISIBLE);
+
+					// TODO:: Need to change direction based on the side of the block the ball hit
+					// Ensure the ball flips direction only once in the case of the ball hitting inbetween two blocks
+					if (!hasCollided)
 					{
-						m_Score += 50;
-						other.RemoveFlag(COLLIDABLE);
-						other.RemoveFlag(VISIBLE);
-
-						// Ensure the ball flips direction only once in the case of the ball hitting inbetween two blocks
-						if (hasCollided == false)
-						{
-							ball.direction.y *= -1.0f;
-							hasCollided = true;
-						}
-					}
-
-					if (other.HasFlag(EntityFlags::PLAYER))
-					{
-						float paddleCenterX = other.position.x + other.width * 0.5f;
-						float ballCenterX = ball.position.x + ball.width * 0.5f;
-
-						// Dividing by (other.width * 0.5f) normalises the offset to the range ( -1, 1 )
-						// The offset is ( 0, -1 ) when the ball hits the centre it will shoot it straight up,
-						// ( -1 , -1 ) is the far left it will shoot the ball left
-						// ( 1, -1 )  is the far right it will shoot the ball right
-						float offsetX = (ballCenterX - paddleCenterX) / (other.width * 0.5f);
-
-						// The y component always shoot us in the opposite y direction
-						Vector2 newDirection = Vector2Normalize({ offsetX, -1.0f }) * Vector2Length(ball.direction);
-						ball.direction = newDirection;
-
-						ball.position.y = other.position.y - ball.height;
+						ball.direction.y *= -1.0f;
+						hasCollided = true;
 					}
 				}
 			}
 		}
 
-		// Check for level completion
-		bool hasWon = true;
-		for (const auto& block : m_Entities)
+		// Check ball collision vs paddle
+		for (auto& ball : m_Entities)
 		{
-			if (!block.HasFlag(EntityFlags::BLOCK)) continue;
-			
-			if (block.HasFlag(EntityFlags::VISIBLE))
+			if (ball.type != EntityType::BALL) continue;
+
+			Rectangle ballBounds { ball.GetCollider() };
+
+			for (auto& paddle : m_Entities)
 			{
-				hasWon = false;
+				if (paddle.type != EntityType::PLAYER) continue;
+
+				Rectangle paddleBounds { paddle.GetCollider() };
+
+				if (CheckCollisionRecs(ballBounds, paddleBounds))
+				{
+					float paddleCenterX = paddle.position.x + paddle.width * 0.5f;
+					float ballCenterX = ball.position.x + ball.width * 0.5f;
+
+					// Dividing by (paddle.width * 0.5f) normalises the offset to the range ( -1, 1 )
+					// The offset is ( 0, -1 ) when the ball hits the centre it will shoot it straight up,
+					// ( -1 , -1 ) is the far left it will shoot the ball left
+					// ( 1, -1 )  is the far right it will shoot the ball right
+					float offsetX = (ballCenterX - paddleCenterX) / (paddle.width * 0.5f);
+
+					// The y component always shoot us in the opposite y direction
+					Vector2 newDirection = Vector2Normalize({ offsetX, -1.0f }) * Vector2Length(ball.direction);
+					ball.direction = newDirection;
+
+					ball.position.y = paddle.position.y - ball.height;
+				}
 			}
 		}
 
-		if (hasWon == true)
+		// Check for game over
+		for (auto& ball : m_Entities)
+		{
+			if (ball.type != EntityType::BALL) continue;
+
+			if (ball.position.y >= GameResolution::f_Height)
+			{
+				ball.RemoveFlag(EntityFlags::VISIBLE);
+				m_GameMode = GameMode::GAME_OVER;
+				break;
+			}
+		}
+
+		// Check for level completion
+		bool levelComplete { true };
+		for (const auto& block : m_Entities)
+		{
+			if (block.type != EntityType::BLOCK) continue;
+			
+			if (block.HasFlag(EntityFlags::VISIBLE))
+			{
+				levelComplete = false;
+			}
+		}
+
+		// TODO:: remove later debug cheat
+		if (IsKeyPressed(KEY_R))
+		{
+			levelComplete = true;
+		}
+
+		if (levelComplete == true)
 		{
 			m_Score += 250;
 			m_GameMode = GameMode::LEVEL_CLEAR;
@@ -245,13 +313,46 @@ void GameLayer::Update(float deltaTime)
 	case GameMode::LEVEL_CLEAR:
 	{
 		// Respawn blocks
+		m_currentBlocksPerRow += 2;
+		m_currentBlocksPerRow = std::min(m_currentBlocksPerRow, m_MaxBlocksPerRow);
+
+
+		const float formationHeight = m_BlockStartOffset + (m_NumBlockRows * m_BlockHeight) + ((m_NumBlockRows - 1) * m_BlockPadding);
+		const float offscreenOffset = formationHeight + m_BlockHeight;
+
+		// Move all blocks offscreen
 		for (auto& block : m_Entities)
 		{
-			if (!block.HasFlag(EntityFlags::BLOCK)) continue;
+			if (block.type != EntityType::BLOCK) continue;
+			block.position.y = block.targetPosition.y - offscreenOffset;
+			block.AddFlag(EntityFlags::ANIMATING);
+		}
 
-			block.AddFlag(EntityFlags::VISIBLE | EntityFlags::COLLIDABLE);
+		// Update visibility flags based on level
+		const int numBlocksToSkip { (m_MaxBlocksPerRow - m_currentBlocksPerRow) / 2 };
+		int blockCounter { 0 };
+		for (auto& block : m_Entities)
+		{
+			if (block.type != EntityType::BLOCK) continue;
+
+			int column { blockCounter % m_MaxBlocksPerRow };
+
+			if (column >= numBlocksToSkip && column < (numBlocksToSkip + m_currentBlocksPerRow))
+			{
+				block.AddFlag(EntityFlags::VISIBLE | EntityFlags::COLLIDABLE);
+			}
+			else
+			{
+				block.RemoveFlag(EntityFlags::VISIBLE | EntityFlags::COLLIDABLE | EntityFlags::ANIMATING);
+			}
+
+			blockCounter++;
 		}
 		m_GameMode = GameMode::PLAYING;
+	}
+	case GameMode::GAME_OVER:
+	{
+
 	}
 	break;
 	}

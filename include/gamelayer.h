@@ -5,26 +5,36 @@
 #include <cstdint>
 #include <unordered_map>
 
-enum class GameMode {
+enum class GameMode 
+{
 	PAUSED,
 	PLAYING,
-	LEVEL_CLEAR
-	//GAME_OVER
+	LEVEL_CLEAR,
+	GAME_OVER
 };
 
-enum EntityFlags : uint32_t {
+enum class EntityType 
+{
 	NONE = 0,
-	VISIBLE = 1 << 0,
-	MOVABLE = 1 << 1,
-	COLLIDABLE = 1 << 2,
-	PLAYER = 1 << 3,
-	BLOCK = 1 << 4,
-	BALL = 1 << 5
+	PLAYER,
+	BALL,
+	BLOCK
+};
+
+
+enum EntityFlags : uint32_t 
+{
+	NONE		= 0,
+	VISIBLE		= 1 << 0,
+	MOVABLE		= 1 << 1,
+	COLLIDABLE	= 1 << 2,
+	ANIMATING	= 1 << 3
 };
 
 struct Entity
 {
-	uint32_t flags = EntityFlags::NONE;
+	EntityType type { EntityType::NONE };
+	uint32_t flags { EntityFlags::NONE };
 
 	// Bind the raylib texture ID to the entity
 	unsigned int textureID { 0 };
@@ -74,8 +84,16 @@ private:
 	CanvasTransform CalculateCanvasTransform() const;
 	
 	GameMode m_GameMode { GameMode::PAUSED };
-
+	int m_currentBlocksPerRow { 7 };
 	int m_Score { 0 };
+	
+	static constexpr int m_MaxBlocksPerRow		{ 15 };
+	static constexpr int m_BlockPadding		{ 2 };
+	static constexpr float m_BlockStartOffset	{ 30.0f };
+	static constexpr int m_NumBlockRows		{ 4 };
+	
+	int m_BlockWidth { 0 };
+	int m_BlockHeight { 0 };
 
 	// placeholder;
 	Font m_Font;
