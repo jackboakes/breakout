@@ -111,8 +111,9 @@ private:
 	UIElement m_ButtonPlayAgain;
 
 	// sound 
-
-	Sound m_ButtonPressed;
+	Sound m_SoundButton;
+	Sound m_SoundBall;
+	Sound m_SoundBrick;
 
 public:
 	GameLayer();

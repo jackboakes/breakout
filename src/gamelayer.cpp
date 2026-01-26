@@ -36,7 +36,7 @@ GameLayer::GameLayer()
 	ball.height =			m_Textures[ballID].height;
 	ball.position.x =		(GameResolution::f_Width / 2.0f) - (ball.width / 2);
 	ball.position.y =		paddle.position.y - ball.height - 2;
-	ball.moveSpeed =		250.0f;
+	ball.moveSpeed =		300.0f;
 	ball.direction =		{ -0.5f, -1.0f };
 	Vector2Normalize(ball.direction);
 	m_Entities.push_back(ball);
@@ -125,7 +125,9 @@ GameLayer::GameLayer()
 
 	// Sound
 	InitAudioDevice();
-	m_ButtonPressed = LoadSound("../assets/sound/button_pressed.wav");
+	m_SoundButton = LoadSound("../assets/sound/button_pressed.wav");
+	m_SoundBrick =	LoadSound("../assets/sound/brick.wav");
+	m_SoundBall =	LoadSound("../assets/sound/ball.wav");
 }
 
 GameLayer::~GameLayer()
@@ -137,7 +139,9 @@ GameLayer::~GameLayer()
 	m_Textures.clear();
 
 	UnloadFont(m_Font);
-	UnloadSound(m_ButtonPressed);
+	UnloadSound(m_SoundButton);
+	UnloadSound(m_SoundBall);
+	UnloadSound(m_SoundBrick);
 }
 
 bool GameLayer::ProcessInput()
@@ -185,7 +189,7 @@ bool GameLayer::ProcessInput()
 		{
 			if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
 			{
-				PlaySound(m_ButtonPressed);
+				PlaySound(m_SoundButton);
 			}
 
 			if (IsMouseButtonDown(MOUSE_LEFT_BUTTON))
@@ -197,8 +201,6 @@ bool GameLayer::ProcessInput()
 					m_GameMode = GameMode::PLAYING;
 				}
 			}
-
-
 		}
 	}
 
@@ -220,7 +222,7 @@ void GameLayer::Update(float deltaTime)
 	break;
 	case GameMode::PLAYING:
 	{
-		//// Handle animating blocks
+		// Handle animating blocks
 		for (auto& entity : m_Entities)
 		{
 			if (entity.HasFlag(EntityFlags::ANIMATING))
@@ -253,6 +255,7 @@ void GameLayer::Update(float deltaTime)
 		}
 
 		// Check Collisions with wall
+		bool wallSoundTrigger { false };
 		for (auto& ball : m_Entities)
 		{
 			if (ball.type != EntityType::BALL) continue;
@@ -262,16 +265,27 @@ void GameLayer::Update(float deltaTime)
 			{
 				ball.direction.x *= -1.0f;
 				ball.position.x = std::clamp(ball.position.x, 0.0f, GameResolution::f_Width - ball.width);
+				wallSoundTrigger = true;
 			}
 
 			if (ball.position.y <= 0)
 			{
 				ball.direction.y *= -1.0f;
 				ball.position.y = std::max(0.0f, ball.position.y);
+				wallSoundTrigger = true;
+			}
+		}
+
+		if (wallSoundTrigger)
+		{
+			if (!IsSoundPlaying(m_SoundBall))
+			{
+				PlaySound(m_SoundBall);
 			}
 		}
 
 		// Check ball collision vs blocks
+		bool brickSoundTrigger { false };
 		for (auto& ball : m_Entities)
 		{
 			if (ball.type != EntityType::BALL) continue;
@@ -288,6 +302,7 @@ void GameLayer::Update(float deltaTime)
 
 				if (CheckCollisionRecs(ballBounds, blockBounds))
 				{
+					brickSoundTrigger = true;
 					m_Score += 50;
 					block.RemoveFlag(COLLIDABLE);
 					block.RemoveFlag(VISIBLE);
@@ -327,7 +342,16 @@ void GameLayer::Update(float deltaTime)
 			}
 		}
 
+		if (brickSoundTrigger)
+		{
+			if (!IsSoundPlaying(m_SoundBrick))
+			{
+				PlaySound(m_SoundBrick);
+			}
+		}
+
 		// Check ball collision vs paddle
+		bool paddleSoundTrigger { false };
 		for (auto& ball : m_Entities)
 		{
 			if (ball.type != EntityType::BALL) continue;
@@ -342,6 +366,7 @@ void GameLayer::Update(float deltaTime)
 
 				if (CheckCollisionRecs(ballBounds, paddleBounds))
 				{
+					paddleSoundTrigger = true;
 					float paddleCenterX { paddle.position.x + paddle.width * 0.5f };
 					float ballCenterX	{ ball.position.x + ball.width * 0.5f };
 
@@ -379,8 +404,15 @@ void GameLayer::Update(float deltaTime)
 						}
 
 					}
-
 				}
+			}
+		}
+
+		if (paddleSoundTrigger)
+		{
+			if (!IsSoundPlaying(m_SoundBall))
+			{
+				PlaySound(m_SoundBall);
 			}
 		}
 
@@ -409,7 +441,7 @@ void GameLayer::Update(float deltaTime)
 			}
 		}
 
-		if (levelComplete == true)
+		if (levelComplete)
 		{
 			m_Score += 250;
 			m_GameMode = GameMode::LEVEL_CLEAR;
@@ -532,7 +564,6 @@ void GameLayer::Draw()
 				DrawTexture(texture->second, m_ButtonPlayAgain.bounds.x, m_ButtonPlayAgain.bounds.y, WHITE);
 			}
 		}
-
 	}
 
 	EndMode2D();
