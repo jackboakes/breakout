@@ -121,6 +121,11 @@ GameLayer::GameLayer()
 		static_cast<float>(m_Textures[buttonNormalID].width),
 		buttonHeight
 	};
+
+
+	// Sound
+	InitAudioDevice();
+	m_ButtonPressed = LoadSound("../assets/sound/button_pressed.wav");
 }
 
 GameLayer::~GameLayer()
@@ -132,6 +137,7 @@ GameLayer::~GameLayer()
 	m_Textures.clear();
 
 	UnloadFont(m_Font);
+	UnloadSound(m_ButtonPressed);
 }
 
 bool GameLayer::ProcessInput()
@@ -177,10 +183,22 @@ bool GameLayer::ProcessInput()
 
 		if (CheckCollisionPointRec(gameMousePos, m_ButtonPlayAgain.bounds))
 		{
+			if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
+			{
+				PlaySound(m_ButtonPressed);
+			}
+
 			if (IsMouseButtonDown(MOUSE_LEFT_BUTTON))
 			{
 				m_ButtonPlayAgain.isPressed = true;
+				
+				if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON))
+				{
+					m_GameMode = GameMode::PLAYING;
+				}
 			}
+
+
 		}
 	}
 
@@ -391,12 +409,6 @@ void GameLayer::Update(float deltaTime)
 			}
 		}
 
-		// TODO:: remove later debug cheat
-		if (IsKeyPressed(KEY_R))
-		{
-			levelComplete = true;
-		}
-
 		if (levelComplete == true)
 		{
 			m_Score += 250;
@@ -443,7 +455,8 @@ void GameLayer::Update(float deltaTime)
 			blockCounter++;
 		}
 		m_GameMode = GameMode::PLAYING;
-	}
+	} 
+	break;
 	case GameMode::GAME_OVER:
 	{
 
@@ -488,9 +501,6 @@ void GameLayer::Draw()
 		// Dim the background
 		DrawRectangle(0, 0, GameResolution::width, GameResolution::height, Fade(BLACK, 0.25f));
 
-		m_PanelGameOver.visible = true;
-		m_ButtonPlayAgain.visible = true;
-
 		auto texture = m_Textures.find(m_PanelGameOver.textureID);
 		if (texture != m_Textures.end())
 		{
@@ -504,14 +514,14 @@ void GameLayer::Draw()
 		const float centreY { m_PanelGameOver.bounds.y + (m_PanelGameOver.bounds.height - scoreTextSize.y) * 0.5f };
 		DrawTextEx(m_Font, scoreText.c_str(), { centreX, centreY }, 16, 2, WHITE);
 
+		// Draw Game Over text
 		const std::string gameOverText { "Game Over" };
 		const Vector2 gameOverTextSize { MeasureTextEx(m_Font, gameOverText.c_str(), 22, 2) };
-		const float centreGameOverTextX { m_PanelGameOver.bounds.x + (m_PanelGameOver.bounds.width - gameOverTextSize.x) * 0.5f };
-		const float centreGameOverTextY { m_PanelGameOver.bounds.y + (m_PanelGameOver.bounds.height - gameOverTextSize.y) * 0.5f };
+		const float gameOverTextX { m_PanelGameOver.bounds.x + (m_PanelGameOver.bounds.width - gameOverTextSize.x) * 0.5f };
+		const float gameOverTextY { m_PanelGameOver.bounds.y + 15 };
+		DrawTextEx(m_Font, gameOverText.c_str(), { gameOverTextX, gameOverTextY }, 22, 2, WHITE);
 
-		DrawTextEx(m_Font, gameOverText.c_str(), { centreGameOverTextX, m_PanelGameOver.bounds.y + 15 }, 22, 2, WHITE);
-
-		if (m_ButtonPlayAgain.visible)
+		if (true)
 		{
 			unsigned int textureID = m_ButtonPlayAgain.isPressed ?
 				m_ButtonPlayAgain.pressedTextureID : m_ButtonPlayAgain.textureID;

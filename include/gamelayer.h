@@ -18,7 +18,6 @@ struct UIElement
 	Rectangle bounds { 0 };
 	unsigned int textureID { 0 };
 	unsigned int pressedTextureID { 0 };
-	bool visible { false };
 	bool isPressed { false };
 };
 
@@ -110,6 +109,10 @@ private:
 
 	UIElement m_PanelGameOver;
 	UIElement m_ButtonPlayAgain;
+
+	// sound 
+
+	Sound m_ButtonPressed;
 
 public:
 	GameLayer();
