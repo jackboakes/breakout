@@ -91,6 +91,36 @@ GameLayer::GameLayer()
 
 		blockCounter++;
 	}
+
+
+	// UI
+	unsigned int gameOverPanelID	{ AddTexture("../assets/image/game_over_panel.png") };
+	unsigned int buttonNormalID		{ AddTexture("../assets/image/button_play_again.png") };
+	unsigned int buttonPressedID	{ AddTexture("../assets/image/button_pressed_play_again.png") };
+
+	// Calculate total height to centre both panel and button
+	const float panelHeight		{ static_cast<float>(m_Textures[gameOverPanelID].height) };
+	const float buttonHeight	{ static_cast<float>(m_Textures[buttonNormalID].height) };
+	const float spacing			{ 6.0f };
+	const float totalHeight		{ panelHeight + spacing + buttonHeight };
+	const float startY			{ (GameResolution::f_Height - totalHeight) * 0.5f };
+
+	m_PanelGameOver.textureID = gameOverPanelID;
+	m_PanelGameOver.bounds = {
+		(GameResolution::f_Width - m_Textures[gameOverPanelID].width) * 0.5f,
+		startY,
+		static_cast<float>(m_Textures[gameOverPanelID].width),
+		panelHeight
+	};
+
+	m_ButtonPlayAgain.textureID = buttonNormalID;
+	m_ButtonPlayAgain.pressedTextureID = buttonPressedID;
+	m_ButtonPlayAgain.bounds = {
+		(GameResolution::f_Width - m_Textures[buttonNormalID].width) * 0.5f,
+		startY + panelHeight + spacing,
+		static_cast<float>(m_Textures[buttonNormalID].width),
+		buttonHeight
+	};
 }
 
 GameLayer::~GameLayer()
@@ -134,6 +164,22 @@ bool GameLayer::ProcessInput()
 			{
 				entity.direction.x += 1.0f;
 				inputProcessed = true;
+			}
+		}
+	}
+
+	if (m_GameMode == GameMode::GAME_OVER)
+	{
+		Vector2 mousePos { GetMousePosition() };
+		Vector2 gameMousePos { GetScreenToWorld2D(mousePos, m_Camera2D) };
+
+		m_ButtonPlayAgain.isPressed = false;
+
+		if (CheckCollisionPointRec(gameMousePos, m_ButtonPlayAgain.bounds))
+		{
+			if (IsMouseButtonDown(MOUSE_LEFT_BUTTON))
+			{
+				m_ButtonPlayAgain.isPressed = true;
 			}
 		}
 	}
@@ -410,9 +456,11 @@ void GameLayer::Update(float deltaTime)
 
 void GameLayer::Draw()
 {
-	// Draw
-	ClearBackground(m_BackgroundColour);
+	// darker gray than the background
+	ClearBackground({ 28, 28, 28 });
 	BeginMode2D(m_Camera2D);
+
+	DrawRectangle(0, 0, GameResolution::width, GameResolution::height, m_BackgroundColour);
 
 	for (const auto& entity : m_Entities)
 	{
@@ -426,11 +474,56 @@ void GameLayer::Draw()
 		}
 	}
 
+	const float centreX { GameResolution::f_Width * 0.5f };
+	const float centreY { GameResolution::f_Height * 0.5f };
+
 	const std::string scoreText { std::to_string(m_Score) };
 	const Vector2 scoreTextSize { MeasureTextEx(m_Font, scoreText.c_str(), 16, 2) };
-	const float centreX { (GameResolution::f_Width - scoreTextSize.x) * 0.5f };
-	const float centreY { (30.0f - scoreTextSize.y) * 0.5f };
-	DrawTextEx(m_Font, scoreText.c_str(), { centreX, centreY }, 16, 2, WHITE);
+	const float centreTextX { centreX - (scoreTextSize.x * 0.5f) };
+	const float centreTextY { (m_BlockStartOffset - scoreTextSize.y) * 0.5f };
+	DrawTextEx(m_Font, scoreText.c_str(), { centreTextX, centreTextY }, 16, 2, WHITE);
+
+	if (m_GameMode == GameMode::GAME_OVER)
+	{
+		// Dim the background
+		DrawRectangle(0, 0, GameResolution::width, GameResolution::height, Fade(BLACK, 0.25f));
+
+		m_PanelGameOver.visible = true;
+		m_ButtonPlayAgain.visible = true;
+
+		auto texture = m_Textures.find(m_PanelGameOver.textureID);
+		if (texture != m_Textures.end())
+		{
+			DrawTexture(texture->second, m_PanelGameOver.bounds.x, m_PanelGameOver.bounds.y, WHITE);
+		}
+
+		// Draw score text on panel
+		const std::string scoreText { std::to_string(m_Score) };
+		const Vector2 scoreTextSize { MeasureTextEx(m_Font, scoreText.c_str(), 16, 2) };
+		const float centreX { m_PanelGameOver.bounds.x + (m_PanelGameOver.bounds.width - scoreTextSize.x) * 0.5f };
+		const float centreY { m_PanelGameOver.bounds.y + (m_PanelGameOver.bounds.height - scoreTextSize.y) * 0.5f };
+		DrawTextEx(m_Font, scoreText.c_str(), { centreX, centreY }, 16, 2, WHITE);
+
+		const std::string gameOverText { "Game Over" };
+		const Vector2 gameOverTextSize { MeasureTextEx(m_Font, gameOverText.c_str(), 22, 2) };
+		const float centreGameOverTextX { m_PanelGameOver.bounds.x + (m_PanelGameOver.bounds.width - gameOverTextSize.x) * 0.5f };
+		const float centreGameOverTextY { m_PanelGameOver.bounds.y + (m_PanelGameOver.bounds.height - gameOverTextSize.y) * 0.5f };
+
+		DrawTextEx(m_Font, gameOverText.c_str(), { centreGameOverTextX, m_PanelGameOver.bounds.y + 15 }, 22, 2, WHITE);
+
+		if (m_ButtonPlayAgain.visible)
+		{
+			unsigned int textureID = m_ButtonPlayAgain.isPressed ?
+				m_ButtonPlayAgain.pressedTextureID : m_ButtonPlayAgain.textureID;
+
+			auto texture = m_Textures.find(textureID);
+			if (texture != m_Textures.end())
+			{
+				DrawTexture(texture->second, m_ButtonPlayAgain.bounds.x, m_ButtonPlayAgain.bounds.y, WHITE);
+			}
+		}
+
+	}
 
 	EndMode2D();
 

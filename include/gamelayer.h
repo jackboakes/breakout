@@ -13,6 +13,15 @@ enum class GameMode
 	GAME_OVER
 };
 
+struct UIElement
+{
+	Rectangle bounds { 0 };
+	unsigned int textureID { 0 };
+	unsigned int pressedTextureID { 0 };
+	bool visible { false };
+	bool isPressed { false };
+};
+
 enum class EntityType 
 {
 	NONE = 0,
@@ -20,7 +29,6 @@ enum class EntityType
 	BALL,
 	BLOCK
 };
-
 
 enum EntityFlags : uint32_t 
 {
@@ -80,7 +88,7 @@ private:
 	std::unordered_map<unsigned int, Texture2D> m_Textures;
 	std::vector<Entity> m_Entities;
 
-	const Color m_BackgroundColour { 32, 32, 32, 0 };
+	const Color m_BackgroundColour { 32, 32, 32, 255 };
 	CanvasTransform CalculateCanvasTransform() const;
 	
 	GameMode m_GameMode { GameMode::PAUSED };
@@ -95,8 +103,13 @@ private:
 	int m_BlockWidth { 0 };
 	int m_BlockHeight { 0 };
 
-	// placeholder;
+
+	// ui
+	// TODO:: placeholder;
 	Font m_Font;
+
+	UIElement m_PanelGameOver;
+	UIElement m_ButtonPlayAgain;
 
 public:
 	GameLayer();
