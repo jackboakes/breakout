@@ -127,6 +127,8 @@ private:
 	Sound m_SoundBall;
 	Sound m_SoundBrick;
 
+	void ResetGame();
+
 public:
 	GameLayer();
 	~GameLayer() override;

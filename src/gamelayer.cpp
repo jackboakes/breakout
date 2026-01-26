@@ -146,13 +146,78 @@ GameLayer::~GameLayer()
 	CloseAudioDevice();
 }
 
+// Set up the game for the next game after the player clicks play again
+void GameLayer::ResetGame()
+{
+	// Reset score
+	m_Score = 0;
+
+	// Reset blocks per row to initial value
+	m_currentBlocksPerRow = 7;
+
+	// Reset paddle positions
+	for (auto& paddle : m_Entities)
+	{
+		if (paddle.type == EntityType::PLAYER)
+		{
+			// Reset paddle to center
+			paddle.position.x = (GameResolution::f_Width / 2.0f) - (paddle.width / 2);
+			paddle.position.y = GameResolution::f_Height - paddle.height - 15;
+			paddle.direction = { 0.0f, 0.0f };
+		}
+	}
+
+	// Reset ball position relative to the paddle
+	for (auto& ball : m_Entities)
+	{
+		if (ball.type != EntityType::BALL) continue;
+		
+		// Find paddle to position ball relative to it
+		for (const auto& paddle : m_Entities)
+		{
+			if (paddle.type != EntityType::PLAYER) continue;
+			
+			ball.position.x = (GameResolution::f_Width / 2.0f) - (ball.width / 2);
+			ball.position.y = paddle.position.y - ball.height - 2;
+			break;
+		}
+		ball.direction = { -0.5f, -1.0f };
+		ball.AddFlag(EntityFlags::VISIBLE);
+	}
+
+	// Reset block visibility based on m_currentBlocksPerRow
+	const int numBlocksToSkip { (m_MaxBlocksPerRow - m_currentBlocksPerRow) / 2 };
+	int blockCounter { 0 };
+	for (auto& block : m_Entities)
+	{
+		if (block.type != EntityType::BLOCK) continue;
+
+		int column { blockCounter % m_MaxBlocksPerRow };
+
+		// Reset position to target (in case of animation state)
+		block.position = block.targetPosition;
+		block.RemoveFlag(EntityFlags::ANIMATING);
+
+		if (column >= numBlocksToSkip && column < (numBlocksToSkip + m_currentBlocksPerRow))
+		{
+			block.AddFlag(EntityFlags::VISIBLE | EntityFlags::COLLIDABLE);
+		}
+		else
+		{
+			block.RemoveFlag(EntityFlags::VISIBLE | EntityFlags::COLLIDABLE);
+		}
+
+		blockCounter++;
+	}
+}
+
 bool GameLayer::ProcessInput()
 {
 	bool inputProcessed { false };
 
 	if (m_GameMode == GameMode::PAUSED)
 	{
-		if (IsKeyPressed(KEY_A) || IsKeyPressed(KEY_D) || IsKeyPressed(KEY_SPACE))
+		if (IsKeyPressed(KEY_A) || IsKeyPressed(KEY_D) || IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER))
 		{
 			m_GameMode = GameMode::PLAYING;
 			return true;
@@ -189,20 +254,23 @@ bool GameLayer::ProcessInput()
 
 		if (CheckCollisionPointRec(gameMousePos, m_ButtonPlayAgain.bounds))
 		{
-			if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
-			{
-				Audio::PlaySoundRandomisedPitch(m_SoundButton);
-			}
-
 			if (IsMouseButtonDown(MOUSE_LEFT_BUTTON))
 			{
 				m_ButtonPlayAgain.isPressed = true;
-				
-				if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON))
-				{
-					m_GameMode = GameMode::PLAYING;
-				}
 			}
+
+			if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON))
+			{
+				Audio::PlaySoundRandomisedPitch(m_SoundButton);
+				ResetGame();
+				m_GameMode = GameMode::PAUSED;
+			}
+		}
+
+		if (IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER))
+		{
+			ResetGame();
+			m_GameMode = GameMode::PAUSED;
 		}
 	}
 
