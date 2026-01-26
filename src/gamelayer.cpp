@@ -125,9 +125,11 @@ GameLayer::GameLayer()
 
 	// Sound
 	InitAudioDevice();
-	m_SoundButton = LoadSound("../assets/sound/button_pressed.wav");
-	m_SoundBrick =	LoadSound("../assets/sound/brick.wav");
-	m_SoundBall =	LoadSound("../assets/sound/ball.wav");
+	m_SoundButton =			LoadSound("../assets/sound/button_pressed.wav");
+	m_SoundBrick =			LoadSound("../assets/sound/brick.wav");
+	m_SoundBall =			LoadSound("../assets/sound/ball.wav");
+	m_SoundLevelComplete =	LoadSound("../assets/sound/level_complete.wav");
+	m_SoundGameOver =		LoadSound("../assets/sound/game_over.wav");
 }
 
 GameLayer::~GameLayer()
@@ -142,6 +144,8 @@ GameLayer::~GameLayer()
 	UnloadSound(m_SoundButton);
 	UnloadSound(m_SoundBall);
 	UnloadSound(m_SoundBrick);
+	UnloadSound(m_SoundLevelComplete);
+	UnloadSound(m_SoundGameOver);
 
 	CloseAudioDevice();
 }
@@ -494,6 +498,7 @@ void GameLayer::Update(float deltaTime)
 			if (ball.position.y >= GameResolution::f_Height)
 			{
 				ball.RemoveFlag(EntityFlags::VISIBLE);
+				Audio::PlaySoundRandomisedPitch(m_SoundGameOver);
 				m_GameMode = GameMode::GAME_OVER;
 				break;
 			}
@@ -514,6 +519,7 @@ void GameLayer::Update(float deltaTime)
 		if (levelComplete)
 		{
 			m_Score += 250;
+			Audio::PlaySoundRandomisedPitch(m_SoundLevelComplete);
 			m_GameMode = GameMode::LEVEL_CLEAR;
 		}
 	}
@@ -609,15 +615,49 @@ void GameLayer::Draw()
 			DrawTexture(texture->second, m_PanelGameOver.bounds.x, m_PanelGameOver.bounds.y, WHITE);
 		}
 
-		// Draw score text on panel
-		const std::string scoreText { std::to_string(m_Score) };
-		const Vector2 scoreTextSize { MeasureTextEx(m_Font, scoreText.c_str(), 16, 2) };
-		const float centreX { m_PanelGameOver.bounds.x + (m_PanelGameOver.bounds.width - scoreTextSize.x) * 0.5f };
-		const float centreY { m_PanelGameOver.bounds.y + (m_PanelGameOver.bounds.height - scoreTextSize.y) * 0.5f };
-		DrawTextEx(m_Font, scoreText.c_str(), { centreX, centreY }, 16, 2, WHITE);
+		// Draw score and high score on panel
+		constexpr float fontSize { 16 };
+		constexpr float fontSpacing { 2 };
+		constexpr float labelValueSpacing { 4.0f };  // vertical gap between label and value
+		constexpr float columnSpacing { 40.0f };      // horizontal gap between score and high columns
+
+		// Score column
+		const std::string scoreLabelText { "score" };
+		const std::string scoreValueText { std::to_string(m_Score) };
+		const Vector2 scoreLabelSize { MeasureTextEx(m_Font, scoreLabelText.c_str(), fontSize, fontSpacing) };
+		const Vector2 scoreValueSize { MeasureTextEx(m_Font, scoreValueText.c_str(), fontSize, fontSpacing) };
+		const float scoreColumnWidth { std::max(scoreLabelSize.x, scoreValueSize.x) };
+
+		// TODO: Replace with actual high score
+		const std::string highLabelText { "high" };
+		const std::string highValueText { std::to_string(m_Score) };
+		const Vector2 highLabelSize { MeasureTextEx(m_Font, highLabelText.c_str(), fontSize, fontSpacing) };
+		const Vector2 highValueSize { MeasureTextEx(m_Font, highValueText.c_str(), fontSize, fontSpacing) };
+		const float highColumnWidth { std::max(highLabelSize.x, highValueSize.x) };
+
+		// Calculate total dimensions for centering
+		const float totalWidth { scoreColumnWidth + columnSpacing + highColumnWidth };
+		const float rowHeight { fontSize + labelValueSpacing + fontSize };
+
+		// Center the entire block in the panel
+		const float startX { m_PanelGameOver.bounds.x + (m_PanelGameOver.bounds.width - totalWidth) * 0.5f };
+		const float startY { m_PanelGameOver.bounds.y + (m_PanelGameOver.bounds.height - rowHeight) * 0.5f };
+
+		// Draw score column (centred within its column)
+		const float scoreLabelX { startX + (scoreColumnWidth - scoreLabelSize.x) * 0.5f };
+		const float scoreValueX { startX + (scoreColumnWidth - scoreValueSize.x) * 0.5f };
+		DrawTextEx(m_Font, scoreLabelText.c_str(), { scoreLabelX, startY }, fontSize, fontSpacing, WHITE);
+		DrawTextEx(m_Font, scoreValueText.c_str(), { scoreValueX, startY + fontSize + labelValueSpacing }, fontSize, fontSpacing, WHITE);
+
+		// Draw high score column (centred within its column)
+		const float highColumnStartX { startX + scoreColumnWidth + columnSpacing };
+		const float highLabelX { highColumnStartX + (highColumnWidth - highLabelSize.x) * 0.5f };
+		const float highValueX { highColumnStartX + (highColumnWidth - highValueSize.x) * 0.5f };
+		DrawTextEx(m_Font, highLabelText.c_str(), { highLabelX, startY }, fontSize, fontSpacing, WHITE);
+		DrawTextEx(m_Font, highValueText.c_str(), { highValueX, startY + fontSize + labelValueSpacing }, fontSize, fontSpacing, WHITE);
 
 		// Draw Game Over text
-		const std::string gameOverText { "Game Over" };
+		const std::string gameOverText { "game over" };
 		const Vector2 gameOverTextSize { MeasureTextEx(m_Font, gameOverText.c_str(), 22, 2) };
 		const float gameOverTextX { m_PanelGameOver.bounds.x + (m_PanelGameOver.bounds.width - gameOverTextSize.x) * 0.5f };
 		const float gameOverTextY { m_PanelGameOver.bounds.y + 15 };

@@ -126,6 +126,8 @@ private:
 	Sound m_SoundButton;
 	Sound m_SoundBall;
 	Sound m_SoundBrick;
+	Sound m_SoundLevelComplete;
+	Sound m_SoundGameOver;
 
 	void ResetGame();
 
