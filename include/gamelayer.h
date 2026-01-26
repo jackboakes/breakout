@@ -5,6 +5,18 @@
 #include <cstdint>
 #include <unordered_map>
 
+namespace Audio
+{
+	inline void PlaySoundRandomisedPitch(Sound& sound)
+	{
+		constexpr int lowerBound { 95 };
+		constexpr int upperBound { 105 };
+		float pitch { GetRandomValue(lowerBound, upperBound) / 100.0f };
+		SetSoundPitch(sound, pitch);
+		PlaySound(sound);
+	}
+};
+
 enum class GameMode 
 {
 	PAUSED,

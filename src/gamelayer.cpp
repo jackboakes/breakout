@@ -142,6 +142,8 @@ GameLayer::~GameLayer()
 	UnloadSound(m_SoundButton);
 	UnloadSound(m_SoundBall);
 	UnloadSound(m_SoundBrick);
+
+	CloseAudioDevice();
 }
 
 bool GameLayer::ProcessInput()
@@ -189,7 +191,7 @@ bool GameLayer::ProcessInput()
 		{
 			if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
 			{
-				PlaySound(m_SoundButton);
+				Audio::PlaySoundRandomisedPitch(m_SoundButton);
 			}
 
 			if (IsMouseButtonDown(MOUSE_LEFT_BUTTON))
@@ -280,7 +282,7 @@ void GameLayer::Update(float deltaTime)
 		{
 			if (!IsSoundPlaying(m_SoundBall))
 			{
-				PlaySound(m_SoundBall);
+				Audio::PlaySoundRandomisedPitch(m_SoundBall);
 			}
 		}
 
@@ -346,7 +348,7 @@ void GameLayer::Update(float deltaTime)
 		{
 			if (!IsSoundPlaying(m_SoundBrick))
 			{
-				PlaySound(m_SoundBrick);
+				Audio::PlaySoundRandomisedPitch(m_SoundBrick);
 			}
 		}
 
@@ -412,7 +414,7 @@ void GameLayer::Update(float deltaTime)
 		{
 			if (!IsSoundPlaying(m_SoundBall))
 			{
-				PlaySound(m_SoundBall);
+				Audio::PlaySoundRandomisedPitch(m_SoundBall);
 			}
 		}
 
@@ -567,7 +569,6 @@ void GameLayer::Draw()
 	}
 
 	EndMode2D();
-
 }
 
 CanvasTransform GameLayer::CalculateCanvasTransform() const
