@@ -577,7 +577,7 @@ void GameLayer::Update(float deltaTime)
 
 void GameLayer::Draw()
 {
-	// darker gray than the background
+	// Darker gray than the background
 	ClearBackground({ 28, 28, 28 });
 	BeginMode2D(m_Camera2D);
 
@@ -587,11 +587,8 @@ void GameLayer::Draw()
 	{
 		if (entity.HasFlag(EntityFlags::VISIBLE))
 		{
-			auto search { m_Textures.find(entity.textureID) };
-			if (search != m_Textures.end())
-			{
-				DrawTexture(search->second, entity.position.x, entity.position.y, WHITE);
-			}
+			const Texture2D& entityTexture { m_Textures.at(entity.textureID) };
+			DrawTexture(entityTexture, entity.position.x, entity.position.y, WHITE);
 		}
 	}
 
@@ -609,11 +606,9 @@ void GameLayer::Draw()
 		// Dim the background
 		DrawRectangle(0, 0, GameResolution::width, GameResolution::height, Fade(BLACK, 0.25f));
 
-		auto texture = m_Textures.find(m_PanelGameOver.textureID);
-		if (texture != m_Textures.end())
-		{
-			DrawTexture(texture->second, m_PanelGameOver.bounds.x, m_PanelGameOver.bounds.y, WHITE);
-		}
+		const Texture2D& panelTexture { m_Textures.at(m_PanelGameOver.textureID) };
+		DrawTexture(panelTexture, m_PanelGameOver.bounds.x, m_PanelGameOver.bounds.y, WHITE);
+
 
 		// Draw score and high score on panel
 		constexpr float fontSize { 16 };
@@ -663,17 +658,11 @@ void GameLayer::Draw()
 		const float gameOverTextY { m_PanelGameOver.bounds.y + 15 };
 		DrawTextEx(m_Font, gameOverText.c_str(), { gameOverTextX, gameOverTextY }, 22, 2, WHITE);
 
-		if (true)
-		{
-			unsigned int textureID = m_ButtonPlayAgain.isPressed ?
-				m_ButtonPlayAgain.pressedTextureID : m_ButtonPlayAgain.textureID;
-
-			auto texture = m_Textures.find(textureID);
-			if (texture != m_Textures.end())
-			{
-				DrawTexture(texture->second, m_ButtonPlayAgain.bounds.x, m_ButtonPlayAgain.bounds.y, WHITE);
-			}
-		}
+		// Button texture
+		unsigned int buttonTextureID { m_ButtonPlayAgain.isPressed ?
+				m_ButtonPlayAgain.pressedTextureID : m_ButtonPlayAgain.textureID };
+		const Texture2D& buttonTexture { m_Textures.at(buttonTextureID) };
+		DrawTexture(buttonTexture, m_ButtonPlayAgain.bounds.x, m_ButtonPlayAgain.bounds.y, WHITE);
 	}
 
 	EndMode2D();
