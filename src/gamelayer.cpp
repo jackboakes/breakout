@@ -296,233 +296,9 @@ void GameLayer::Update(float deltaTime)
 	break;
 	case GameMode::PLAYING:
 	{
-		// Handle animating blocks
-		for (auto& entity : m_GameState.m_Entities)
-		{
-			if (entity.HasFlag(EntityFlags::ANIMATING))
-			{
-				constexpr float lerpSpeed { 1.5f };
-				entity.position.y = Lerp(entity.position.y, entity.targetPosition.y, lerpSpeed * deltaTime);
-
-				if (fabs(entity.position.y - entity.targetPosition.y) <= 0.0f)
-				{
-					entity.position.y = entity.targetPosition.y;
-					entity.RemoveFlag(EntityFlags::ANIMATING);
-				}
-			}
-		}
-
-		// Update movement
-		for (auto& entity : m_GameState.m_Entities)
-		{
-			if (entity.HasFlag(EntityFlags::MOVABLE))
-			{
-				const float displacement { entity.moveSpeed * deltaTime };
-				entity.position.x += entity.direction.x * displacement;
-				entity.position.y += entity.direction.y * displacement;
-			}
-
-			if (entity.type == EntityType::PLAYER)
-			{
-				entity.position.x = std::clamp(entity.position.x, 0.0f, GameResolution::f_Width - static_cast<float>(entity.width));
-			}
-		}
-
-		// Check Collisions with wall
-		bool wallSoundTrigger { false };
-		for (auto& ball : m_GameState.m_Entities)
-		{
-			if (ball.type != EntityType::BALL) continue;
-
-			// Screen Bouncing
-			if (ball.position.x <= 0 || ball.position.x + ball.width >= GameResolution::width)
-			{
-				ball.direction.x *= -1.0f;
-				ball.position.x = std::clamp(ball.position.x, 0.0f, GameResolution::f_Width - ball.width);
-				wallSoundTrigger = true;
-			}
-
-			if (ball.position.y <= 0)
-			{
-				ball.direction.y *= -1.0f;
-				ball.position.y = std::max(0.0f, ball.position.y);
-				wallSoundTrigger = true;
-			}
-		}
-
-		if (wallSoundTrigger)
-		{
-			if (!IsSoundPlaying(m_SoundBall))
-			{
-				Audio::PlaySoundRandomisedPitch(m_SoundBall);
-			}
-		}
-
-		// Check ball collision vs blocks
-		bool brickSoundTrigger { false };
-		for (auto& ball : m_GameState.m_Entities)
-		{
-			if (ball.type != EntityType::BALL) continue;
-
-			Rectangle ballBounds { ball.GetCollider() };
-			bool hasCollided { false };
-
-			for (auto& block : m_GameState.m_Entities)
-			{
-				if (block.type != EntityType::BLOCK) continue;
-				if (!block.HasFlag(EntityFlags::COLLIDABLE)) continue;
-
-				Rectangle blockBounds { block.GetCollider() };
-
-				if (CheckCollisionRecs(ballBounds, blockBounds))
-				{
-					brickSoundTrigger = true;
-					m_GameState.m_Score += 50;
-					block.RemoveFlag(COLLIDABLE);
-					block.RemoveFlag(VISIBLE);
-
-					// Ensure the ball flips direction only once in the case of the ball hitting inbetween two blocks
-					if (!hasCollided)
-					{
-						// Calculate ball and block centers
-						float ballCenterX	{ ball.position.x + ball.width * 0.5f };
-						float ballCenterY	{ ball.position.y + ball.height * 0.5f };
-						float blockCenterX	{ block.position.x + block.width * 0.5f };
-						float blockCenterY	{ block.position.y + block.height * 0.5f };
-
-						// Get direciton from block centre to the ball centre
-						float deltaX { ballCenterX - blockCenterX };
-						float deltaY { ballCenterY - blockCenterY };
-
-						// Normalise by block dimensions to get aspect-ratio-independent comparison
-						float normalisedX { deltaX / (block.width * 0.5f) };
-						float normalisedY { deltaY / (block.height * 0.5f) };
-						
-						// The component with the larger absolute normalised value indicates which side was hit
-						if (std::abs(normalisedX) > std::abs(normalisedY))
-						{
-							// Hit left or right side
-							ball.direction.x *= -1.0f;  
-						}
-						else
-						{
-							// Hit top or bottom
-							ball.direction.y *= -1.0f;  
-						}
-						
-						hasCollided = true;
-					}
-				}
-			}
-		}
-
-		if (brickSoundTrigger)
-		{
-			if (!IsSoundPlaying(m_SoundBrick))
-			{
-				Audio::PlaySoundRandomisedPitch(m_SoundBrick);
-			}
-		}
-
-		// Check ball collision vs paddle
-		bool paddleSoundTrigger { false };
-		for (auto& ball : m_GameState.m_Entities)
-		{
-			if (ball.type != EntityType::BALL) continue;
-
-			Rectangle ballBounds { ball.GetCollider() };
-
-			for (auto& paddle : m_GameState.m_Entities)
-			{
-				if (paddle.type != EntityType::PLAYER) continue;
-
-				Rectangle paddleBounds { paddle.GetCollider() };
-
-				if (CheckCollisionRecs(ballBounds, paddleBounds))
-				{
-					paddleSoundTrigger = true;
-					float paddleCenterX { paddle.position.x + paddle.width * 0.5f };
-					float ballCenterX	{ ball.position.x + ball.width * 0.5f };
-
-					// Calculate collision centers
-					float paddleCenterY { paddle.position.y + paddle.height * 0.5f };
-					float ballCenterY	{ ball.position.y + ball.height * 0.5f };
-
-					// Get direction from paddle centre to the ball centre
-					float deltaX { ballCenterX - paddleCenterX };
-					float deltaY { ballCenterY - paddleCenterY };
-
-					// Normalise by paddle dimensions to get aspect-ratio-independent comparison
-					float normalisedX { deltaX / (paddle.width * 0.5f) };
-					float normalisedY { deltaY / (paddle.height * 0.5f) };
-
-					// Scale to make the bounce flatter 
-					float deflection { normalisedX * 1.5f };
-		
-					// The y component always shoot us in the opposite y direction
-					Vector2 newDirection { Vector2Normalize({ deflection, -1.0f }) };
-					ball.direction = newDirection;
-
-					// If its a side hit snap x position to side to prevent overlap
-					if (std::abs(normalisedX) >= std::abs(normalisedY))
-					{
-						if (deltaX < 0)
-						{
-							// Left side
-							ball.position.x = paddle.position.x - ball.width;
-						}
-						else
-						{
-							// Right side
-							ball.position.x = paddle.position.x + paddle.width;
-						}
-
-					}
-				}
-			}
-		}
-
-		if (paddleSoundTrigger)
-		{
-			if (!IsSoundPlaying(m_SoundBall))
-			{
-				Audio::PlaySoundRandomisedPitch(m_SoundBall);
-			}
-		}
-
-		// Check for game over
-		for (auto& ball : m_GameState.m_Entities)
-		{
-			if (ball.type != EntityType::BALL) continue;
-
-			if (ball.position.y >= GameResolution::f_Height)
-			{
-				ball.RemoveFlag(EntityFlags::VISIBLE);
-				Audio::PlaySoundRandomisedPitch(m_SoundGameOver);
-				m_GameState.m_HighScore = std::max(m_GameState.m_Score, m_GameState.m_HighScore);
-				m_GameState.m_GameMode = GameMode::GAME_OVER;
-				break;
-			}
-		}
-
-		// Check for level completion
-		bool levelComplete { true };
-		for (const auto& block : m_GameState.m_Entities)
-		{
-			if (block.type != EntityType::BLOCK) continue;
-			
-			if (block.HasFlag(EntityFlags::VISIBLE))
-			{
-				levelComplete = false;
-			}
-		}
-
-		if (levelComplete)
-		{
-			m_GameState.m_Score += 250;
-			Audio::PlaySoundRandomisedPitch(m_SoundLevelComplete);
-			m_GameState.m_GameMode = GameMode::LEVEL_CLEAR;
-		}
+		UpdateEntities(deltaTime);
+		HandleCollisions();
+		CheckGameRules();
 	}
 	break;
 	case GameMode::LEVEL_CLEAR:
@@ -532,8 +308,10 @@ void GameLayer::Update(float deltaTime)
 		m_GameState.m_currentBlocksPerRow = std::min(m_GameState.m_currentBlocksPerRow, m_GameState.m_MaxBlocksPerRow);
 
 
-		const float formationHeight = m_GameState.m_BlockStartOffset + (m_GameState.m_NumBlockRows * m_GameState.m_BlockHeight) + ((m_GameState.m_NumBlockRows - 1) * m_GameState.m_BlockPadding);
-		const float offscreenOffset = formationHeight + m_GameState.m_BlockHeight;
+		const float totalBlockHeight { m_GameState.m_BlockStartOffset + 
+			(m_GameState.m_NumBlockRows * m_GameState.m_BlockHeight) + 
+			((m_GameState.m_NumBlockRows - 1) * m_GameState.m_BlockPadding) };
+		const float offscreenOffset { totalBlockHeight + m_GameState.m_BlockHeight };
 
 		// Move all blocks offscreen
 		for (auto& block : m_GameState.m_Entities)
@@ -571,9 +349,7 @@ void GameLayer::Update(float deltaTime)
 
 	}
 	break;
-	}
-
-	
+	}	
 }
 
 void GameLayer::Draw()
@@ -667,6 +443,252 @@ void GameLayer::Draw()
 	}
 
 	EndMode2D();
+}
+
+void GameLayer::UpdateEntities(float deltaTime)
+{
+	// Handle animating blocks
+	for (auto& entity : m_GameState.m_Entities)
+	{
+		if (entity.HasFlag(EntityFlags::ANIMATING))
+		{
+			constexpr float lerpSpeed { 1.5f };
+			entity.position.y = Lerp(entity.position.y, entity.targetPosition.y, lerpSpeed * deltaTime);
+
+			if (fabs(entity.position.y - entity.targetPosition.y) <= 0.0f)
+			{
+				entity.position.y = entity.targetPosition.y;
+				entity.RemoveFlag(EntityFlags::ANIMATING);
+			}
+		}
+	}
+
+	// Update movement
+	for (auto& entity : m_GameState.m_Entities)
+	{
+		if (entity.HasFlag(EntityFlags::MOVABLE))
+		{
+			const float displacement { entity.moveSpeed * deltaTime };
+			entity.position.x += entity.direction.x * displacement;
+			entity.position.y += entity.direction.y * displacement;
+		}
+
+		if (entity.type == EntityType::PLAYER)
+		{
+			entity.position.x = std::clamp(entity.position.x, 0.0f, GameResolution::f_Width - static_cast<float>(entity.width));
+		}
+	}
+}
+
+void GameLayer::HandleCollisions()
+{
+	HandleWallCollisions();
+	HandleBlockCollisions();
+	HandlePaddleCollisions();
+}
+void GameLayer::HandleWallCollisions()
+{
+	// Check Collisions with wall
+	bool wallSoundTrigger { false };
+	for (auto& ball : m_GameState.m_Entities)
+	{
+		if (ball.type != EntityType::BALL) continue;
+
+		// Screen Bouncing
+		if (ball.position.x <= 0 || ball.position.x + ball.width >= GameResolution::width)
+		{
+			ball.direction.x *= -1.0f;
+			ball.position.x = std::clamp(ball.position.x, 0.0f, GameResolution::f_Width - ball.width);
+			wallSoundTrigger = true;
+		}
+
+		if (ball.position.y <= 0)
+		{
+			ball.direction.y *= -1.0f;
+			ball.position.y = std::max(0.0f, ball.position.y);
+			wallSoundTrigger = true;
+		}
+	}
+	if (wallSoundTrigger)
+	{
+		if (!IsSoundPlaying(m_SoundBall))
+		{
+			Audio::PlaySoundRandomisedPitch(m_SoundBall);
+		}
+	}
+}
+void GameLayer::HandleBlockCollisions()
+{
+	// Check ball collision vs blocks
+	bool brickSoundTrigger { false };
+	for (auto& ball : m_GameState.m_Entities)
+	{
+		if (ball.type != EntityType::BALL) continue;
+
+		Rectangle ballBounds { ball.GetCollider() };
+		bool hasCollided { false };
+
+		for (auto& block : m_GameState.m_Entities)
+		{
+			if (block.type != EntityType::BLOCK) continue;
+			if (!block.HasFlag(EntityFlags::COLLIDABLE)) continue;
+
+			Rectangle blockBounds { block.GetCollider() };
+
+			if (CheckCollisionRecs(ballBounds, blockBounds))
+			{
+				brickSoundTrigger = true;
+				m_GameState.m_Score += 50;
+				block.RemoveFlag(COLLIDABLE);
+				block.RemoveFlag(VISIBLE);
+
+				// Ensure the ball flips direction only once in the case of the ball hitting inbetween two blocks
+				if (!hasCollided)
+				{
+					// Calculate ball and block centers
+					float ballCenterX { ball.position.x + ball.width * 0.5f };
+					float ballCenterY { ball.position.y + ball.height * 0.5f };
+					float blockCenterX { block.position.x + block.width * 0.5f };
+					float blockCenterY { block.position.y + block.height * 0.5f };
+
+					// Get direciton from block centre to the ball centre
+					float deltaX { ballCenterX - blockCenterX };
+					float deltaY { ballCenterY - blockCenterY };
+
+					// Normalise by block dimensions to get aspect-ratio-independent comparison
+					float normalisedX { deltaX / (block.width * 0.5f) };
+					float normalisedY { deltaY / (block.height * 0.5f) };
+
+					// The component with the larger absolute normalised value indicates which side was hit
+					if (std::abs(normalisedX) > std::abs(normalisedY))
+					{
+						// Hit left or right side
+						ball.direction.x *= -1.0f;
+					}
+					else
+					{
+						// Hit top or bottom
+						ball.direction.y *= -1.0f;
+					}
+
+					hasCollided = true;
+				}
+			}
+		}
+	}
+
+	if (brickSoundTrigger)
+	{
+		if (!IsSoundPlaying(m_SoundBrick))
+		{
+			Audio::PlaySoundRandomisedPitch(m_SoundBrick);
+		}
+	}
+}
+
+void GameLayer::HandlePaddleCollisions()
+{
+	bool paddleSoundTrigger { false };
+	for (auto& ball : m_GameState.m_Entities)
+	{
+		if (ball.type != EntityType::BALL) continue;
+
+		Rectangle ballBounds { ball.GetCollider() };
+
+		for (auto& paddle : m_GameState.m_Entities)
+		{
+			if (paddle.type != EntityType::PLAYER) continue;
+
+			Rectangle paddleBounds { paddle.GetCollider() };
+
+			if (CheckCollisionRecs(ballBounds, paddleBounds))
+			{
+				paddleSoundTrigger = true;
+				float paddleCenterX { paddle.position.x + paddle.width * 0.5f };
+				float ballCenterX { ball.position.x + ball.width * 0.5f };
+
+				// Calculate collision centers
+				float paddleCenterY { paddle.position.y + paddle.height * 0.5f };
+				float ballCenterY { ball.position.y + ball.height * 0.5f };
+
+				// Get direction from paddle centre to the ball centre
+				float deltaX { ballCenterX - paddleCenterX };
+				float deltaY { ballCenterY - paddleCenterY };
+
+				// Normalise by paddle dimensions to get aspect-ratio-independent comparison
+				float normalisedX { deltaX / (paddle.width * 0.5f) };
+				float normalisedY { deltaY / (paddle.height * 0.5f) };
+
+				// Scale to make the bounce flatter 
+				float deflection { normalisedX * 1.5f };
+
+				// The y component always shoot us in the opposite y direction
+				Vector2 newDirection { Vector2Normalize({ deflection, -1.0f }) };
+				ball.direction = newDirection;
+
+				// If its a side hit snap x position to side to prevent overlap
+				if (std::abs(normalisedX) >= std::abs(normalisedY))
+				{
+					if (deltaX < 0)
+					{
+						// Left side
+						ball.position.x = paddle.position.x - ball.width;
+					}
+					else
+					{
+						// Right side
+						ball.position.x = paddle.position.x + paddle.width;
+					}
+
+				}
+			}
+		}
+	}
+
+	if (paddleSoundTrigger)
+	{
+		if (!IsSoundPlaying(m_SoundBall))
+		{
+			Audio::PlaySoundRandomisedPitch(m_SoundBall);
+		}
+	}
+}
+
+void GameLayer::CheckGameRules()
+{
+	// Check for game over
+	for (auto& ball : m_GameState.m_Entities)
+	{
+		if (ball.type != EntityType::BALL) continue;
+
+		if (ball.position.y >= GameResolution::f_Height)
+		{
+			ball.RemoveFlag(EntityFlags::VISIBLE);
+			Audio::PlaySoundRandomisedPitch(m_SoundGameOver);
+			m_GameState.m_HighScore = std::max(m_GameState.m_Score, m_GameState.m_HighScore);
+			m_GameState.m_GameMode = GameMode::GAME_OVER;
+			break;
+		}
+	}
+
+	// Check for level completion
+	bool levelComplete { true };
+	for (const auto& block : m_GameState.m_Entities)
+	{
+		if (block.type != EntityType::BLOCK) continue;
+
+		if (block.HasFlag(EntityFlags::VISIBLE))
+		{
+			levelComplete = false;
+		}
+	}
+
+	if (levelComplete)
+	{
+		m_GameState.m_Score += 250;
+		Audio::PlaySoundRandomisedPitch(m_SoundLevelComplete);
+		m_GameState.m_GameMode = GameMode::LEVEL_CLEAR;
+	}
 }
 
 CanvasTransform GameLayer::CalculateCanvasTransform() const

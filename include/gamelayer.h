@@ -33,13 +33,6 @@ private:
 	const Color m_BackgroundColour { 32, 32, 32, 255 };
 	CanvasTransform CalculateCanvasTransform() const;
 	
-	// ui
-	// TODO:: placeholder;
-	Font m_Font;
-
-	UIElement m_PanelGameOver;
-	UIElement m_ButtonPlayAgain;
-
 	// sound 
 	Sound m_SoundButton;
 	Sound m_SoundBall;
@@ -47,7 +40,18 @@ private:
 	Sound m_SoundLevelComplete;
 	Sound m_SoundGameOver;
 
+	// ui
+	Font m_Font;
+	UIElement m_PanelGameOver;
+	UIElement m_ButtonPlayAgain;
 	void ResetGame();
+
+	void UpdateEntities(float deltaTime);
+	void HandleCollisions();
+	void HandleWallCollisions();
+	void HandleBlockCollisions();
+	void HandlePaddleCollisions();
+	void CheckGameRules();
 
 public:
 	GameLayer();
