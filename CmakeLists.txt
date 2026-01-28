@@ -26,6 +26,7 @@ endif()
 
 set(HEADERS
     include/application.h
+    include/entity.h
     include/gamelayer.h
     include/globals.h
     include/layer.h
