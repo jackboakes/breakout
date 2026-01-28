@@ -44,11 +44,12 @@ private:
 	GameMode m_GameMode { GameMode::PAUSED };
 	int m_currentBlocksPerRow { 7 };
 	int m_Score { 0 };
+	int m_HighScore { 0 };
 	
-	static constexpr int m_MaxBlocksPerRow		{ 15 };
-	static constexpr int m_BlockPadding		{ 2 };
-	static constexpr float m_BlockStartOffset	{ 30.0f };
-	static constexpr int m_NumBlockRows		{ 4 };
+	static constexpr int m_MaxBlocksPerRow { 15 };
+	static constexpr int m_BlockPadding { 2 };
+	static constexpr float m_BlockStartOffset { 30.0f };
+	static constexpr int m_NumBlockRows { 4 };
 	
 	int m_BlockWidth { 0 };
 	int m_BlockHeight { 0 };

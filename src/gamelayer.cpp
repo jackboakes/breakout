@@ -499,6 +499,7 @@ void GameLayer::Update(float deltaTime)
 			{
 				ball.RemoveFlag(EntityFlags::VISIBLE);
 				Audio::PlaySoundRandomisedPitch(m_SoundGameOver);
+				m_HighScore = std::max(m_Score, m_HighScore);
 				m_GameMode = GameMode::GAME_OVER;
 				break;
 			}
@@ -623,9 +624,9 @@ void GameLayer::Draw()
 		const Vector2 scoreValueSize { MeasureTextEx(m_Font, scoreValueText.c_str(), fontSize, fontSpacing) };
 		const float scoreColumnWidth { std::max(scoreLabelSize.x, scoreValueSize.x) };
 
-		// TODO: Replace with actual high score
+		// High score column
 		const std::string highLabelText { "high" };
-		const std::string highValueText { std::to_string(m_Score) };
+		const std::string highValueText { std::to_string(m_HighScore) };
 		const Vector2 highLabelSize { MeasureTextEx(m_Font, highLabelText.c_str(), fontSize, fontSpacing) };
 		const Vector2 highValueSize { MeasureTextEx(m_Font, highValueText.c_str(), fontSize, fontSpacing) };
 		const float highColumnWidth { std::max(highLabelSize.x, highValueSize.x) };
