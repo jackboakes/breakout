@@ -5,6 +5,16 @@
 #include <string>
 #include <cmath>
 
+/*
+* All the game entities are initialised in the constructor and when the 
+* textures are loaded the correct texture ID is bound to the type of entity.
+* This allows O(1) lookup of texture when rendering entites in the draw stage.
+
+* Since this style of game has a minimal amount of entities on the screen at anyone time,
+* I chose not to construct or destruct new entities during gameplay or level resets.
+* Instead, entities remain in memory, and code paths are flagged on/off with the 
+* bitmask flags (MOVABLE, VISIBLE, COLLIDABLE, etc.).
+*/
 GameLayer::GameLayer()
 {
 	m_Font = LoadFontEx("../assets/font/NES.ttf", 32, 0, 250);
@@ -355,9 +365,12 @@ void GameLayer::Update(float deltaTime)
 void GameLayer::Draw()
 {
 	// Darker gray than the background
-	ClearBackground({ 28, 28, 28 });
+	constexpr Color windowBackgroundColour { 28, 28, 28, 255 };
+	ClearBackground(windowBackgroundColour);
+
 	BeginMode2D(m_Camera2D);
 
+	// Draw a different coloured rectangle for the game area this helps people see the edge walls when not playing on a 4:3 aspect ratio 
 	DrawRectangle(0, 0, GameResolution::width, GameResolution::height, m_BackgroundColour);
 
 	for (const auto& entity : m_GameState.m_Entities)

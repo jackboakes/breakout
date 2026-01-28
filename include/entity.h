@@ -18,6 +18,13 @@ enum class EntityType
 	BLOCK
 };
 
+/*
+* By using a homogenous Entity struct I can loop over entities and check by 
+* flag instead of by type. 
+
+* For example I can loop over all MOVABLE entities and move them without caring
+* about the domain type.
+*/
 enum EntityFlags : uint8_t
 {
 	NONE = 0,
