@@ -2,7 +2,7 @@
 #include "layer.h"
 #include "raylib.h"
 #include "entity.h"
-#include <vector>
+#include "gamestate.h"
 #include <unordered_map>
 
 namespace Audio
@@ -17,14 +17,6 @@ namespace Audio
 	}
 };
 
-enum class GameMode 
-{
-	PAUSED,
-	PLAYING,
-	LEVEL_CLEAR,
-	GAME_OVER
-};
-
 struct CanvasTransform
 {
 	float scale;
@@ -34,27 +26,13 @@ struct CanvasTransform
 class GameLayer : public Layer
 {
 private:
+	GameState m_GameState { 0 };
 	Camera2D m_Camera2D { 0 };
 	std::unordered_map<unsigned int, Texture2D> m_Textures;
-	std::vector<Entity> m_Entities;
 
 	const Color m_BackgroundColour { 32, 32, 32, 255 };
 	CanvasTransform CalculateCanvasTransform() const;
 	
-	GameMode m_GameMode { GameMode::PAUSED };
-	int m_currentBlocksPerRow { 7 };
-	int m_Score { 0 };
-	int m_HighScore { 0 };
-	
-	static constexpr int m_MaxBlocksPerRow { 15 };
-	static constexpr int m_BlockPadding { 2 };
-	static constexpr float m_BlockStartOffset { 30.0f };
-	static constexpr int m_NumBlockRows { 4 };
-	
-	int m_BlockWidth { 0 };
-	int m_BlockHeight { 0 };
-
-
 	// ui
 	// TODO:: placeholder;
 	Font m_Font;

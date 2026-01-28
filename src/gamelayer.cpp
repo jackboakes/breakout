@@ -25,7 +25,7 @@ GameLayer::GameLayer()
 	paddle.position.x =		(GameResolution::f_Width / 2.0f) - (paddle.width / 2);
 	paddle.position.y =		GameResolution::f_Height - paddle.height - 15;
 	paddle.moveSpeed =		400.0f;
-	m_Entities.push_back(paddle);
+	m_GameState.m_Entities.push_back(paddle);
 
 	Entity ball;
 	ball.AddFlag(EntityFlags::MOVABLE | EntityFlags::VISIBLE | EntityFlags::COLLIDABLE);
@@ -39,7 +39,7 @@ GameLayer::GameLayer()
 	ball.moveSpeed =		300.0f;
 	ball.direction =		{ -0.5f, -1.0f };
 	Vector2Normalize(ball.direction);
-	m_Entities.push_back(ball);
+	m_GameState.m_Entities.push_back(ball);
 
 	
 	// The order matters 0 = top 3 = bottom
@@ -49,38 +49,38 @@ GameLayer::GameLayer()
 	blockTextureIds[2] = AddTexture("../assets/image/block_green.png"); 
 	blockTextureIds[3] = AddTexture("../assets/image/block_blue.png"); 
 
-	m_BlockWidth	= m_Textures[blockTextureIds[0]].width;
-	m_BlockHeight	= m_Textures[blockTextureIds[0]].height;
+	m_GameState.m_BlockWidth	= m_Textures[blockTextureIds[0]].width;
+	m_GameState.m_BlockHeight	= m_Textures[blockTextureIds[0]].height;
 
-	const int totalBlockWidth	{ (m_MaxBlocksPerRow * m_BlockWidth) + ((m_MaxBlocksPerRow - 1) * m_BlockPadding) };
+	const int totalBlockWidth	{ (m_GameState.m_MaxBlocksPerRow * m_GameState.m_BlockWidth) + ((m_GameState.m_MaxBlocksPerRow - 1) * m_GameState.m_BlockPadding) };
 	const float startX			{ (GameResolution::f_Width * 0.5f) - (static_cast<float>(totalBlockWidth) * 0.5f) };
 
 
-	for (int i { 0 }; i < m_NumBlockRows; i++)
+	for (int i { 0 }; i < m_GameState.m_NumBlockRows; i++)
 	{
-		for (int j { 0 }; j < m_MaxBlocksPerRow; j++)
+		for (int j { 0 }; j < m_GameState.m_MaxBlocksPerRow; j++)
 		{
 			Entity block;
 			block.type =			EntityType::BLOCK;
 			block.textureID =		blockTextureIds[i];
-			block.width =			m_BlockWidth;
-			block.height =			m_BlockHeight;
-			block.position.x =		startX + static_cast<float>(j * (m_BlockWidth + m_BlockPadding));
-			block.position.y =		m_BlockStartOffset + i * (block.height + m_BlockPadding);
+			block.width = m_GameState.m_BlockWidth;
+			block.height = m_GameState.m_BlockHeight;
+			block.position.x =		startX + static_cast<float>(j * (m_GameState.m_BlockWidth + m_GameState.m_BlockPadding));
+			block.position.y = m_GameState.m_BlockStartOffset + i * (block.height + m_GameState.m_BlockPadding);
 			block.targetPosition =	block.position;
-			m_Entities.push_back(block);
+			m_GameState.m_Entities.push_back(block);
 		}
 	}
 
-	const int numBlocksToSkip { (m_MaxBlocksPerRow - m_currentBlocksPerRow) / 2 };
+	const int numBlocksToSkip { (m_GameState.m_MaxBlocksPerRow - m_GameState.m_currentBlocksPerRow) / 2 };
 	int blockCounter { 0 };
-	for (auto& block : m_Entities)
+	for (auto& block : m_GameState.m_Entities)
 	{
 		if (block.type != EntityType::BLOCK) continue;
 
-		int column { blockCounter % m_MaxBlocksPerRow };
+		int column { blockCounter % m_GameState.m_MaxBlocksPerRow };
 
-		if (column >= numBlocksToSkip && column < (numBlocksToSkip + m_currentBlocksPerRow))
+		if (column >= numBlocksToSkip && column < (numBlocksToSkip + m_GameState.m_currentBlocksPerRow))
 		{
 			block.AddFlag(EntityFlags::VISIBLE | EntityFlags::COLLIDABLE);
 		}
@@ -154,13 +154,13 @@ GameLayer::~GameLayer()
 void GameLayer::ResetGame()
 {
 	// Reset score
-	m_Score = 0;
+	m_GameState.m_Score = 0;
 
 	// Reset blocks per row to initial value
-	m_currentBlocksPerRow = 7;
+	m_GameState.m_currentBlocksPerRow = 7;
 
 	// Reset paddle positions
-	for (auto& paddle : m_Entities)
+	for (auto& paddle : m_GameState.m_Entities)
 	{
 		if (paddle.type == EntityType::PLAYER)
 		{
@@ -172,12 +172,12 @@ void GameLayer::ResetGame()
 	}
 
 	// Reset ball position relative to the paddle
-	for (auto& ball : m_Entities)
+	for (auto& ball : m_GameState.m_Entities)
 	{
 		if (ball.type != EntityType::BALL) continue;
 		
 		// Find paddle to position ball relative to it
-		for (const auto& paddle : m_Entities)
+		for (const auto& paddle : m_GameState.m_Entities)
 		{
 			if (paddle.type != EntityType::PLAYER) continue;
 			
@@ -190,19 +190,19 @@ void GameLayer::ResetGame()
 	}
 
 	// Reset block visibility based on m_currentBlocksPerRow
-	const int numBlocksToSkip { (m_MaxBlocksPerRow - m_currentBlocksPerRow) / 2 };
+	const int numBlocksToSkip { (m_GameState.m_MaxBlocksPerRow - m_GameState.m_currentBlocksPerRow) / 2 };
 	int blockCounter { 0 };
-	for (auto& block : m_Entities)
+	for (auto& block : m_GameState.m_Entities)
 	{
 		if (block.type != EntityType::BLOCK) continue;
 
-		int column { blockCounter % m_MaxBlocksPerRow };
+		int column { blockCounter % m_GameState.m_MaxBlocksPerRow };
 
 		// Reset position to target (in case of animation state)
 		block.position = block.targetPosition;
 		block.RemoveFlag(EntityFlags::ANIMATING);
 
-		if (column >= numBlocksToSkip && column < (numBlocksToSkip + m_currentBlocksPerRow))
+		if (column >= numBlocksToSkip && column < (numBlocksToSkip + m_GameState.m_currentBlocksPerRow))
 		{
 			block.AddFlag(EntityFlags::VISIBLE | EntityFlags::COLLIDABLE);
 		}
@@ -219,17 +219,17 @@ bool GameLayer::ProcessInput()
 {
 	bool inputProcessed { false };
 
-	if (m_GameMode == GameMode::PAUSED)
+	if (m_GameState.m_GameMode == GameMode::PAUSED)
 	{
 		if (IsKeyPressed(KEY_A) || IsKeyPressed(KEY_D) || IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER))
 		{
-			m_GameMode = GameMode::PLAYING;
+			m_GameState.m_GameMode = GameMode::PLAYING;
 			return true;
 		}
 		return false;
 	}
 
-	for (auto& entity : m_Entities)
+	for (auto& entity : m_GameState.m_Entities)
 	{
 		if (entity.type == EntityType::PLAYER)
 		{
@@ -249,7 +249,7 @@ bool GameLayer::ProcessInput()
 		}
 	}
 
-	if (m_GameMode == GameMode::GAME_OVER)
+	if (m_GameState.m_GameMode == GameMode::GAME_OVER)
 	{
 		Vector2 mousePos { GetMousePosition() };
 		Vector2 gameMousePos { GetScreenToWorld2D(mousePos, m_Camera2D) };
@@ -267,14 +267,14 @@ bool GameLayer::ProcessInput()
 			{
 				Audio::PlaySoundRandomisedPitch(m_SoundButton);
 				ResetGame();
-				m_GameMode = GameMode::PAUSED;
+				m_GameState.m_GameMode = GameMode::PAUSED;
 			}
 		}
 
 		if (IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER))
 		{
 			ResetGame();
-			m_GameMode = GameMode::PAUSED;
+			m_GameState.m_GameMode = GameMode::PAUSED;
 		}
 	}
 
@@ -287,7 +287,7 @@ void GameLayer::Update(float deltaTime)
 	m_Camera2D.zoom = canvasTransform.scale;
 	m_Camera2D.offset = canvasTransform.offset;
 
-	switch (m_GameMode)
+	switch (m_GameState.m_GameMode)
 	{
 	case GameMode::PAUSED:
 	{
@@ -297,7 +297,7 @@ void GameLayer::Update(float deltaTime)
 	case GameMode::PLAYING:
 	{
 		// Handle animating blocks
-		for (auto& entity : m_Entities)
+		for (auto& entity : m_GameState.m_Entities)
 		{
 			if (entity.HasFlag(EntityFlags::ANIMATING))
 			{
@@ -313,7 +313,7 @@ void GameLayer::Update(float deltaTime)
 		}
 
 		// Update movement
-		for (auto& entity : m_Entities)
+		for (auto& entity : m_GameState.m_Entities)
 		{
 			if (entity.HasFlag(EntityFlags::MOVABLE))
 			{
@@ -330,7 +330,7 @@ void GameLayer::Update(float deltaTime)
 
 		// Check Collisions with wall
 		bool wallSoundTrigger { false };
-		for (auto& ball : m_Entities)
+		for (auto& ball : m_GameState.m_Entities)
 		{
 			if (ball.type != EntityType::BALL) continue;
 
@@ -360,14 +360,14 @@ void GameLayer::Update(float deltaTime)
 
 		// Check ball collision vs blocks
 		bool brickSoundTrigger { false };
-		for (auto& ball : m_Entities)
+		for (auto& ball : m_GameState.m_Entities)
 		{
 			if (ball.type != EntityType::BALL) continue;
 
 			Rectangle ballBounds { ball.GetCollider() };
 			bool hasCollided { false };
 
-			for (auto& block : m_Entities)
+			for (auto& block : m_GameState.m_Entities)
 			{
 				if (block.type != EntityType::BLOCK) continue;
 				if (!block.HasFlag(EntityFlags::COLLIDABLE)) continue;
@@ -377,7 +377,7 @@ void GameLayer::Update(float deltaTime)
 				if (CheckCollisionRecs(ballBounds, blockBounds))
 				{
 					brickSoundTrigger = true;
-					m_Score += 50;
+					m_GameState.m_Score += 50;
 					block.RemoveFlag(COLLIDABLE);
 					block.RemoveFlag(VISIBLE);
 
@@ -426,13 +426,13 @@ void GameLayer::Update(float deltaTime)
 
 		// Check ball collision vs paddle
 		bool paddleSoundTrigger { false };
-		for (auto& ball : m_Entities)
+		for (auto& ball : m_GameState.m_Entities)
 		{
 			if (ball.type != EntityType::BALL) continue;
 
 			Rectangle ballBounds { ball.GetCollider() };
 
-			for (auto& paddle : m_Entities)
+			for (auto& paddle : m_GameState.m_Entities)
 			{
 				if (paddle.type != EntityType::PLAYER) continue;
 
@@ -491,7 +491,7 @@ void GameLayer::Update(float deltaTime)
 		}
 
 		// Check for game over
-		for (auto& ball : m_Entities)
+		for (auto& ball : m_GameState.m_Entities)
 		{
 			if (ball.type != EntityType::BALL) continue;
 
@@ -499,15 +499,15 @@ void GameLayer::Update(float deltaTime)
 			{
 				ball.RemoveFlag(EntityFlags::VISIBLE);
 				Audio::PlaySoundRandomisedPitch(m_SoundGameOver);
-				m_HighScore = std::max(m_Score, m_HighScore);
-				m_GameMode = GameMode::GAME_OVER;
+				m_GameState.m_HighScore = std::max(m_GameState.m_Score, m_GameState.m_HighScore);
+				m_GameState.m_GameMode = GameMode::GAME_OVER;
 				break;
 			}
 		}
 
 		// Check for level completion
 		bool levelComplete { true };
-		for (const auto& block : m_Entities)
+		for (const auto& block : m_GameState.m_Entities)
 		{
 			if (block.type != EntityType::BLOCK) continue;
 			
@@ -519,24 +519,24 @@ void GameLayer::Update(float deltaTime)
 
 		if (levelComplete)
 		{
-			m_Score += 250;
+			m_GameState.m_Score += 250;
 			Audio::PlaySoundRandomisedPitch(m_SoundLevelComplete);
-			m_GameMode = GameMode::LEVEL_CLEAR;
+			m_GameState.m_GameMode = GameMode::LEVEL_CLEAR;
 		}
 	}
 	break;
 	case GameMode::LEVEL_CLEAR:
 	{
 		// Respawn blocks
-		m_currentBlocksPerRow += 2;
-		m_currentBlocksPerRow = std::min(m_currentBlocksPerRow, m_MaxBlocksPerRow);
+		m_GameState.m_currentBlocksPerRow += 2;
+		m_GameState.m_currentBlocksPerRow = std::min(m_GameState.m_currentBlocksPerRow, m_GameState.m_MaxBlocksPerRow);
 
 
-		const float formationHeight = m_BlockStartOffset + (m_NumBlockRows * m_BlockHeight) + ((m_NumBlockRows - 1) * m_BlockPadding);
-		const float offscreenOffset = formationHeight + m_BlockHeight;
+		const float formationHeight = m_GameState.m_BlockStartOffset + (m_GameState.m_NumBlockRows * m_GameState.m_BlockHeight) + ((m_GameState.m_NumBlockRows - 1) * m_GameState.m_BlockPadding);
+		const float offscreenOffset = formationHeight + m_GameState.m_BlockHeight;
 
 		// Move all blocks offscreen
-		for (auto& block : m_Entities)
+		for (auto& block : m_GameState.m_Entities)
 		{
 			if (block.type != EntityType::BLOCK) continue;
 			block.position.y = block.targetPosition.y - offscreenOffset;
@@ -544,15 +544,15 @@ void GameLayer::Update(float deltaTime)
 		}
 
 		// Update visibility flags based on level
-		const int numBlocksToSkip { (m_MaxBlocksPerRow - m_currentBlocksPerRow) / 2 };
+		const int numBlocksToSkip { (m_GameState.m_MaxBlocksPerRow - m_GameState.m_currentBlocksPerRow) / 2 };
 		int blockCounter { 0 };
-		for (auto& block : m_Entities)
+		for (auto& block : m_GameState.m_Entities)
 		{
 			if (block.type != EntityType::BLOCK) continue;
 
-			int column { blockCounter % m_MaxBlocksPerRow };
+			int column { blockCounter % m_GameState.m_MaxBlocksPerRow };
 
-			if (column >= numBlocksToSkip && column < (numBlocksToSkip + m_currentBlocksPerRow))
+			if (column >= numBlocksToSkip && column < (numBlocksToSkip + m_GameState.m_currentBlocksPerRow))
 			{
 				block.AddFlag(EntityFlags::VISIBLE | EntityFlags::COLLIDABLE);
 			}
@@ -563,7 +563,7 @@ void GameLayer::Update(float deltaTime)
 
 			blockCounter++;
 		}
-		m_GameMode = GameMode::PLAYING;
+		m_GameState.m_GameMode = GameMode::PLAYING;
 	} 
 	break;
 	case GameMode::GAME_OVER:
@@ -584,7 +584,7 @@ void GameLayer::Draw()
 
 	DrawRectangle(0, 0, GameResolution::width, GameResolution::height, m_BackgroundColour);
 
-	for (const auto& entity : m_Entities)
+	for (const auto& entity : m_GameState.m_Entities)
 	{
 		if (entity.HasFlag(EntityFlags::VISIBLE))
 		{
@@ -596,13 +596,13 @@ void GameLayer::Draw()
 	const float centreX { GameResolution::f_Width * 0.5f };
 	const float centreY { GameResolution::f_Height * 0.5f };
 
-	const std::string scoreText { std::to_string(m_Score) };
+	const std::string scoreText { std::to_string(m_GameState.m_Score) };
 	const Vector2 scoreTextSize { MeasureTextEx(m_Font, scoreText.c_str(), 16, 2) };
 	const float centreTextX { centreX - (scoreTextSize.x * 0.5f) };
-	const float centreTextY { (m_BlockStartOffset - scoreTextSize.y) * 0.5f };
+	const float centreTextY { (m_GameState.m_BlockStartOffset - scoreTextSize.y) * 0.5f };
 	DrawTextEx(m_Font, scoreText.c_str(), { centreTextX, centreTextY }, 16, 2, WHITE);
 
-	if (m_GameMode == GameMode::GAME_OVER)
+	if (m_GameState.m_GameMode == GameMode::GAME_OVER)
 	{
 		// Dim the background
 		DrawRectangle(0, 0, GameResolution::width, GameResolution::height, Fade(BLACK, 0.25f));
@@ -619,14 +619,14 @@ void GameLayer::Draw()
 
 		// Score column
 		const std::string scoreLabelText { "score" };
-		const std::string scoreValueText { std::to_string(m_Score) };
+		const std::string scoreValueText { std::to_string(m_GameState.m_Score) };
 		const Vector2 scoreLabelSize { MeasureTextEx(m_Font, scoreLabelText.c_str(), fontSize, fontSpacing) };
 		const Vector2 scoreValueSize { MeasureTextEx(m_Font, scoreValueText.c_str(), fontSize, fontSpacing) };
 		const float scoreColumnWidth { std::max(scoreLabelSize.x, scoreValueSize.x) };
 
 		// High score column
 		const std::string highLabelText { "high" };
-		const std::string highValueText { std::to_string(m_HighScore) };
+		const std::string highValueText { std::to_string(m_GameState.m_HighScore) };
 		const Vector2 highLabelSize { MeasureTextEx(m_Font, highLabelText.c_str(), fontSize, fontSpacing) };
 		const Vector2 highValueSize { MeasureTextEx(m_Font, highValueText.c_str(), fontSize, fontSpacing) };
 		const float highColumnWidth { std::max(highLabelSize.x, highValueSize.x) };
