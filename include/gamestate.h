@@ -13,6 +13,12 @@ enum class GameMode
 
 struct GameState
 {
+	static GameState& Instance()
+	{
+		static GameState instance;
+		return instance;
+	}
+
 	Camera2D m_Camera2D { 0 };
 	std::vector<Entity> m_Entities;
 

@@ -26,7 +26,7 @@ struct CanvasTransform
 class GameLayer : public Layer
 {
 private:
-	GameState m_GameState { 0 };
+	GameState& m_GameState { GameState::Instance() };
 	Camera2D m_Camera2D { 0 };
 	std::unordered_map<unsigned int, Texture2D> m_Textures;
 
