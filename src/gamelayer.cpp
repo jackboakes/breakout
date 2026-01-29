@@ -231,12 +231,11 @@ bool GameLayer::ProcessInput()
 
 	if (m_GameState.m_GameMode == GameMode::PAUSED)
 	{
-		if (IsKeyPressed(KEY_A) || IsKeyPressed(KEY_D) || IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER))
+		if (IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER))
 		{
 			m_GameState.m_GameMode = GameMode::PLAYING;
 			return true;
 		}
-		return false;
 	}
 
 	for (auto& entity : m_GameState.m_Entities)
@@ -301,6 +300,34 @@ void GameLayer::Update(float deltaTime)
 	{
 	case GameMode::PAUSED:
 	{
+		// Update paddle movement
+		for (auto& entity : m_GameState.m_Entities)
+		{
+			if (entity.type == EntityType::PLAYER)
+			{
+				const float displacement { entity.moveSpeed * deltaTime };
+				entity.position.x += entity.direction.x * displacement;
+				entity.position.y += entity.direction.y * displacement;
+				entity.position.x = std::clamp(entity.position.x, 0.0f, GameResolution::f_Width - static_cast<float>(entity.width));
+				break;
+			}
+		}
+
+		// Make ball stick to paddle
+		for (auto& ball : m_GameState.m_Entities)
+		{
+			if (ball.type != EntityType::BALL) continue;
+
+			for (const auto& paddle : m_GameState.m_Entities)
+			{
+				if (paddle.type != EntityType::PLAYER) continue;
+
+				// Position ball centered above paddle
+				ball.position.x = paddle.position.x + (paddle.width / 2.0f) - (ball.width / 2.0f);
+				ball.position.y = paddle.position.y - ball.height - 2;
+				break;
+			}
+		}
 
 	}
 	break;
@@ -390,6 +417,28 @@ void GameLayer::Draw()
 	const float centreTextX { centreX - (scoreTextSize.x * 0.5f) };
 	const float centreTextY { (m_GameState.m_BlockStartOffset - scoreTextSize.y) * 0.5f };
 	DrawTextEx(m_Font, scoreText.c_str(), { centreTextX, centreTextY }, 16, 2, WHITE);
+
+
+	if (m_GameState.m_GameMode == GameMode::PAUSED)
+	{
+		// Dim the background
+		DrawRectangle(0, 0, GameResolution::width, GameResolution::height, Fade(BLACK, 0.25f));
+
+
+		const std::string readyText { "ready?" };
+		const Vector2 readyTextSize { MeasureTextEx(m_Font, readyText.c_str(), 22, 2) };
+		const std::string startPromptText { "press space or enter to start" };
+		const Vector2 startPromptTextSize { MeasureTextEx(m_Font, startPromptText.c_str(), 12, 2) };
+
+		const float readyTextX { (GameResolution::f_Width - readyTextSize.x) * 0.5f };
+		const float readyTextY { (GameResolution::f_Height - readyTextSize.y) * 0.5f };
+		const float startPromptTextX { (GameResolution::f_Width - startPromptTextSize.x) * 0.5f };
+		const float startPromptTextY { (GameResolution::f_Height - startPromptTextSize.y) * 0.5f };
+
+
+		DrawTextEx(m_Font, readyText.c_str(), { readyTextX, readyTextY - startPromptTextSize.y }, 22, 2, WHITE);
+		DrawTextEx(m_Font, startPromptText.c_str(), { startPromptTextX, startPromptTextY + readyTextSize.y }, 12, 2, WHITE);
+	}
 
 	if (m_GameState.m_GameMode == GameMode::GAME_OVER)
 	{
