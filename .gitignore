@@ -1,1 +1,5 @@
 build/
+
+*.a
+minshell.html
+ninja.exe
